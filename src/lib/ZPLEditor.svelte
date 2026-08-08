@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fabric } from 'fabric';
-	import { inchesToDots, dotsToInches, type BarcodeFormat, type RotationAngle } from './zpl/types.js';
+	import {
+		inchesToDots,
+		dotsToInches,
+		type BarcodeFormat,
+		type RotationAngle
+	} from './zpl/types.js';
 	import { compileFabricCanvasToZPL } from './zpl/zplCompiler.js';
 	import { renderBarcodeDataUrl } from './zpl/barcodeRenderer.js';
 	import { rgbaToZplGF } from './zpl/imageDither.js';
@@ -173,21 +178,21 @@
 		p1: new fabric.Control({
 			x: -0.5,
 			y: -0.5,
-			actionHandler: function(eventData, transform, x, y) {
+			actionHandler: function (eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-				
+
 				const pointer = canvas.getPointer(eventData);
 				let p1X = pointer.x;
 				let p1Y = pointer.y;
-				
+
 				// Get p2 in canvas space
 				const p2 = fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
 					line.calcTransformMatrix()
 				);
-				
+
 				// Snap near vertical (same X as p2)
 				if (Math.abs(p1X - p2.x) < 15) {
 					p1X = p2.x;
@@ -196,7 +201,7 @@
 				if (Math.abs(p1Y - p2.y) < 15) {
 					p1Y = p2.y;
 				}
-				
+
 				// Recalculate bounding box
 				const minX = Math.min(p1X, p2.x);
 				const minY = Math.min(p1Y, p2.y);
@@ -204,7 +209,7 @@
 				const maxY = Math.max(p1Y, p2.y);
 				const w = maxX - minX || 1;
 				const h = maxY - minY || 1;
-				
+
 				line.set({
 					left: minX,
 					top: minY,
@@ -217,14 +222,14 @@
 					x2: p2.x - minX - w / 2,
 					y2: p2.y - minY - h / 2
 				} as any);
-				
+
 				line.setCoords();
 				updateZPL();
 				canvas.requestRenderAll();
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function(ctx, left, top, styleOverride, fabricObject) {
+			render: function (ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -235,7 +240,7 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function(dim, finalMatrix, fabricObject) {
+			positionHandler: function (dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
@@ -246,21 +251,21 @@
 		p2: new fabric.Control({
 			x: 0.5,
 			y: 0.5,
-			actionHandler: function(eventData, transform, x, y) {
+			actionHandler: function (eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-				
+
 				const pointer = canvas.getPointer(eventData);
 				let p2X = pointer.x;
 				let p2Y = pointer.y;
-				
+
 				// Get p1 in canvas space
 				const p1 = fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
 					line.calcTransformMatrix()
 				);
-				
+
 				// Snap near vertical (same X as p1)
 				if (Math.abs(p2X - p1.x) < 15) {
 					p2X = p1.x;
@@ -269,7 +274,7 @@
 				if (Math.abs(p2Y - p1.y) < 15) {
 					p2Y = p1.y;
 				}
-				
+
 				// Recalculate bounding box
 				const minX = Math.min(p1.x, p2X);
 				const minY = Math.min(p1.y, p2Y);
@@ -277,7 +282,7 @@
 				const maxY = Math.max(p1.y, p2Y);
 				const w = maxX - minX || 1;
 				const h = maxY - minY || 1;
-				
+
 				line.set({
 					left: minX,
 					top: minY,
@@ -290,14 +295,14 @@
 					x2: p2X - minX - w / 2,
 					y2: p2Y - minY - h / 2
 				} as any);
-				
+
 				line.setCoords();
 				updateZPL();
 				canvas.requestRenderAll();
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function(ctx, left, top, styleOverride, fabricObject) {
+			render: function (ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -308,7 +313,7 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function(dim, finalMatrix, fabricObject) {
+			positionHandler: function (dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
@@ -360,17 +365,17 @@
 		} else {
 			activeObject.set('scaleY', 1);
 		}
-		
+
 		const roundingVal = (activeObject as any).zplRounding || 0;
 		const w = (activeObject.width || 0) * (activeObject.scaleX || 1);
 		const h = (activeObject.height || 0) * (activeObject.scaleY || 1);
 		const rx = (roundingVal / 8) * (Math.min(w, h) / 2);
-		
+
 		activeObject.set({
 			rx: rx / (activeObject.scaleX || 1),
 			ry: rx / (activeObject.scaleY || 1)
 		});
-		
+
 		activeObject.setCoords();
 		fabricCanvas?.renderAll();
 		updateZPL();
@@ -379,16 +384,16 @@
 	function updateRectangleRounding(rounding: number) {
 		if (!activeObject || (activeObject as any).zplType !== 'rectangle') return;
 		(activeObject as any).zplRounding = rounding;
-		
+
 		const w = (activeObject.width || 0) * (activeObject.scaleX || 1);
 		const h = (activeObject.height || 0) * (activeObject.scaleY || 1);
 		const rx = (rounding / 8) * (Math.min(w, h) / 2);
-		
+
 		activeObject.set({
 			rx: rx / (activeObject.scaleX || 1),
 			ry: rx / (activeObject.scaleY || 1)
 		});
-		
+
 		fabricCanvas?.renderAll();
 		updateZPL();
 	}
@@ -396,7 +401,7 @@
 	async function addBarcode(text = 'BARCODE', x = 50, y = 50, format: BarcodeFormat = 'QR') {
 		if (!fabricCanvas) return;
 		const dataUrl = await renderBarcodeDataUrl(text, format);
-		
+
 		fabric.Image.fromURL(dataUrl, (img) => {
 			img.set({
 				left: x,
@@ -406,7 +411,7 @@
 			(img as any).zplType = 'barcode';
 			(img as any).zplData = text;
 			(img as any).barcodeFormat = format;
-			
+
 			fabricCanvas?.add(img);
 			fabricCanvas?.setActiveObject(img);
 			updateZPL();
@@ -505,7 +510,38 @@
 			updateZPL();
 		});
 	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		if (!fabricCanvas || !activeObject) return;
+
+		// Guard: Ignore if user is typing in an input/textarea/select element on the page
+		const activeEl = document.activeElement;
+		if (activeEl) {
+			const tagName = activeEl.tagName.toLowerCase();
+			if (
+				tagName === 'input' ||
+				tagName === 'textarea' ||
+				tagName === 'select' ||
+				activeEl.hasAttribute('contenteditable') ||
+				activeEl.getAttribute('contenteditable') === 'true'
+			) {
+				return;
+			}
+		}
+
+		// Guard: Ignore if active fabric object is in text-editing mode
+		if (activeObject.isEditing) {
+			return;
+		}
+
+		if (e.key === 'Delete' || e.key === 'Backspace') {
+			e.preventDefault();
+			deleteSelected();
+		}
+	}
 </script>
+
+<svelte:window onkeydown={handleKeyDown} />
 
 <div class="zpl-editor-container">
 	<!-- TOP TOOLBAR -->
@@ -739,7 +775,9 @@
 									oninput={(e) => updateRectangleRounding(parseInt(e.currentTarget.value))}
 									style="flex: 1;"
 								/>
-								<span class="zoom-val" style="min-width: 1rem; text-align: right;">{(activeObject as any).zplRounding || 0}</span>
+								<span class="zoom-val" style="min-width: 1rem; text-align: right;"
+									>{(activeObject as any).zplRounding || 0}</span
+								>
 							</div>
 						</label>
 					</div>
@@ -868,7 +906,13 @@
 		width: 100%;
 		background-color: #0f172a;
 		color: #f8fafc;
-		font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			BlinkMacSystemFont,
+			'Segoe UI',
+			Roboto,
+			sans-serif;
 	}
 
 	.toolbar {
@@ -906,7 +950,8 @@
 		width: 4.5rem;
 	}
 
-	input, select {
+	input,
+	select {
 		background: #0f172a;
 		border: 1px solid #334155;
 		color: #f8fafc;
@@ -915,7 +960,8 @@
 		font-size: 0.85rem;
 	}
 
-	input:focus, select:focus {
+	input:focus,
+	select:focus {
 		outline: 2px solid #3b82f6;
 		border-color: transparent;
 	}
@@ -1006,7 +1052,9 @@
 	}
 
 	.canvas-wrapper {
-		box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+		box-shadow:
+			0 20px 25px -5px rgba(0, 0, 0, 0.5),
+			0 8px 10px -6px rgba(0, 0, 0, 0.5);
 		border: 2px dashed #3b82f6;
 		background: #ffffff;
 	}
@@ -1032,7 +1080,8 @@
 		gap: 0.5rem;
 	}
 
-	.prop-grid label, .prop-field {
+	.prop-grid label,
+	.prop-field {
 		display: flex;
 		flex-direction: column;
 		gap: 0.3rem;
@@ -1040,7 +1089,8 @@
 		color: #94a3b8;
 	}
 
-	.prop-field input, .prop-field select {
+	.prop-field input,
+	.prop-field select {
 		width: 100%;
 	}
 

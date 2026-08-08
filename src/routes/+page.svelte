@@ -13,7 +13,6 @@
 		const dpmm = Math.round(labelDpi / 25.4);
 		return `https://api.labelary.com/v1/printers/${dpmm}dpmm/labels/${labelWidth}x${labelHeight}/0/${encodeURIComponent(zplOutput)}`;
 	});
-
 </script>
 
 <svelte:head>
@@ -68,10 +67,7 @@
 			<div class="zpl-view-container">
 				<div class="zpl-header">
 					<h2>Real-Time Generated ZPL Code</h2>
-					<button
-						class="copy-btn"
-						onclick={() => navigator.clipboard.writeText(zplOutput)}
-					>
+					<button class="copy-btn" onclick={() => navigator.clipboard.writeText(zplOutput)}>
 						Copy ZPL
 					</button>
 				</div>
@@ -80,8 +76,11 @@
 		{:else if activeTab === 'preview'}
 			<div class="preview-container">
 				<h2>Thermal Print Simulation (Labelary Engine)</h2>
-				<p>This image is generated in real time directly from your compiled ZPL code via the Labelary API:</p>
-				
+				<p>
+					This image is generated in real time directly from your compiled ZPL code via the Labelary
+					API:
+				</p>
+
 				<div class="preview-card">
 					{#if labelaryUrl}
 						<img src={labelaryUrl} alt="ZPL Thermal Print Preview" class="labelary-img" />
@@ -100,7 +99,13 @@
 		padding: 0;
 		background: #0f172a;
 		color: #f8fafc;
-		font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			BlinkMacSystemFont,
+			'Segoe UI',
+			Roboto,
+			sans-serif;
 	}
 
 	.demo-wrapper {
