@@ -13,12 +13,6 @@
 		const dpmm = Math.round(labelDpi / 25.4);
 		return `https://api.labelary.com/v1/printers/${dpmm}dpmm/labels/${labelWidth}x${labelHeight}/0/${encodeURIComponent(zplOutput)}`;
 	});
-
-	function applyPreset(w: number, h: number, dpi: number) {
-		labelWidth = w;
-		labelHeight = h;
-		labelDpi = dpi;
-	}
 </script>
 
 <svelte:head>
@@ -30,31 +24,6 @@
 		<div class="brand">
 			<span class="logo-icon">🖨️</span>
 			<h1>Svelte ZPL Editor Demo</h1>
-		</div>
-
-		<div class="presets">
-			<span class="preset-label">Presets:</span>
-			<button
-				class="preset-btn"
-				class:active={labelWidth === 4 && labelHeight === 6}
-				onclick={() => applyPreset(4.0, 6.0, 300)}
-			>
-				4" × 6" Shipping
-			</button>
-			<button
-				class="preset-btn"
-				class:active={labelWidth === 2 && labelHeight === 1}
-				onclick={() => applyPreset(2.0, 1.0, 300)}
-			>
-				2" × 1" Product
-			</button>
-			<button
-				class="preset-btn"
-				class:active={labelWidth === 3 && labelHeight === 2}
-				onclick={() => applyPreset(3.0, 2.0, 300)}
-			>
-				3" × 2" Inventory
-			</button>
 		</div>
 
 		<div class="view-tabs">
@@ -80,19 +49,25 @@
 				Print Preview (Labelary)
 			</button>
 		</div>
+
+		<div class="nav-spacer"></div>
 	</nav>
 
 	<div class="main-content">
-		{#if activeTab === 'editor'}
-			<ZPLEditor bind:width={labelWidth} bind:height={labelHeight} bind:dpi={labelDpi} bind:zpl={zplOutput} />
-		{:else if activeTab === 'zpl'}
+		<div class="editor-tab-content" class:hidden={activeTab !== 'editor'}>
+			<ZPLEditor
+				bind:width={labelWidth}
+				bind:height={labelHeight}
+				bind:dpi={labelDpi}
+				bind:zpl={zplOutput}
+				visible={activeTab === 'editor'}
+			/>
+		</div>
+		{#if activeTab === 'zpl'}
 			<div class="zpl-view-container">
 				<div class="zpl-header">
 					<h2>Real-Time Generated ZPL Code</h2>
-					<button
-						class="copy-btn"
-						onclick={() => navigator.clipboard.writeText(zplOutput)}
-					>
+					<button class="copy-btn" onclick={() => navigator.clipboard.writeText(zplOutput)}>
 						Copy ZPL
 					</button>
 				</div>
@@ -101,8 +76,11 @@
 		{:else if activeTab === 'preview'}
 			<div class="preview-container">
 				<h2>Thermal Print Simulation (Labelary Engine)</h2>
-				<p>This image is generated in real time directly from your compiled ZPL code via the Labelary API:</p>
-				
+				<p>
+					This image is generated in real time directly from your compiled ZPL code via the Labelary
+					API:
+				</p>
+
 				<div class="preview-card">
 					{#if labelaryUrl}
 						<img src={labelaryUrl} alt="ZPL Thermal Print Preview" class="labelary-img" />
@@ -121,7 +99,13 @@
 		padding: 0;
 		background: #0f172a;
 		color: #f8fafc;
-		font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			BlinkMacSystemFont,
+			'Segoe UI',
+			Roboto,
+			sans-serif;
 	}
 
 	.demo-wrapper {
@@ -131,9 +115,9 @@
 	}
 
 	.demo-nav {
-		display: flex;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		justify-content: space-between;
 		padding: 0.75rem 1.5rem;
 		background: #1e293b;
 		border-bottom: 1px solid #334155;
@@ -151,18 +135,7 @@
 		font-weight: 700;
 	}
 
-	.presets {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.preset-label {
-		font-size: 0.8rem;
-		color: #94a3b8;
-	}
-
-	.preset-btn, .tab-btn {
+	.tab-btn {
 		background: #0f172a;
 		border: 1px solid #334155;
 		color: #94a3b8;
@@ -173,12 +146,12 @@
 		transition: all 0.15s ease;
 	}
 
-	.preset-btn:hover, .tab-btn:hover {
+	.tab-btn:hover {
 		color: #f8fafc;
 		border-color: #3b82f6;
 	}
 
-	.preset-btn.active, .tab-btn.active {
+	.tab-btn.active {
 		background: #3b82f6;
 		color: #ffffff;
 		border-color: #3b82f6;
@@ -194,6 +167,16 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
+	}
+
+	.editor-tab-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.hidden {
+		display: none !important;
 	}
 
 	.zpl-view-container {
