@@ -17,8 +17,14 @@ describe('ZPL Compiler Utility Functions', () => {
   });
 
   it('formats text ZPL with rotation orientation', () => {
-    const zpl = formatTextZPL({ x: 100, y: 150, text: 'Hello', fontSize: 36, angle: 90 });
+    const zpl = formatTextZPL({ x: 100, y: 150, text: 'Hello', height: 36, width: 36, angle: 90 });
     expect(zpl).toBe('^FO100,150^A0R,36,36^FDHello^FS\r\n');
+  });
+
+
+  it('formats stretched text ZPL correctly', () => {
+    const zpl = formatTextZPL({ x: 80, y: 120, text: 'Stretched', height: 48, width: 24, angle: 0 });
+    expect(zpl).toBe('^FO80,120^A0N,48,24^FDStretched^FS\r\n');
   });
 
   it('formats rectangle ZPL correctly', () => {

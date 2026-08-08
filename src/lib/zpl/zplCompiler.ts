@@ -21,10 +21,11 @@ export function generateZPLHeader(pwDots: number, llDots: number): string {
   return `^XA\r\n^PW${pwDots}\r\n^LL${llDots}\r\n^PR12\r\n^MD30\r\n^PON\r\n`;
 }
 
-export function formatTextZPL(opts: { x: number; y: number; text: string; fontSize: number; angle: number }): string {
+export function formatTextZPL(opts: { x: number; y: number; text: string; height: number; width: number; angle: number }): string {
   const orient = getZPLOrientation(opts.angle);
-  const size = Math.round(opts.fontSize);
-  return `^FO${Math.round(opts.x)},${Math.round(opts.y)}^A0${orient},${size},${size}^FD${opts.text}^FS\r\n`;
+  const h = Math.round(opts.height);
+  const w = Math.round(opts.width);
+  return `^FO${Math.round(opts.x)},${Math.round(opts.y)}^A0${orient},${h},${w}^FD${opts.text}^FS\r\n`;
 }
 
 export function formatRectZPL(opts: { x: number; y: number; width: number; height: number; strokeWidth: number; angle: number; rounding?: number }): string {
@@ -75,7 +76,8 @@ export function compileFabricCanvasToZPL(canvas: fabric.Canvas, config: LabelCon
         x,
         y,
         text: textObj.text || '',
-        fontSize: textObj.fontSize || 36,
+        height: (textObj.fontSize || 36) * (textObj.scaleY || 1),
+        width: (textObj.fontSize || 36) * (textObj.scaleX || 1),
         angle
       });
     } else if (customType === 'rectangle' || obj.type === 'rect') {
