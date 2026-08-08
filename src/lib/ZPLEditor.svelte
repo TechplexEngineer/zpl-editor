@@ -8,9 +8,9 @@
 
 	// Props with Svelte 5 bindable syntax
 	let {
-		width = 4.0,
-		height = 6.0,
-		dpi = 300,
+		width = $bindable(4.0),
+		height = $bindable(6.0),
+		dpi = $bindable(300),
 		zpl = $bindable(''),
 		onChange = (zplString: string) => {}
 	} = $props<{
