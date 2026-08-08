@@ -55,9 +55,16 @@
 	</nav>
 
 	<div class="main-content">
-		{#if activeTab === 'editor'}
-			<ZPLEditor bind:width={labelWidth} bind:height={labelHeight} bind:dpi={labelDpi} bind:zpl={zplOutput} />
-		{:else if activeTab === 'zpl'}
+		<div class="editor-tab-content" class:hidden={activeTab !== 'editor'}>
+			<ZPLEditor
+				bind:width={labelWidth}
+				bind:height={labelHeight}
+				bind:dpi={labelDpi}
+				bind:zpl={zplOutput}
+				visible={activeTab === 'editor'}
+			/>
+		</div>
+		{#if activeTab === 'zpl'}
 			<div class="zpl-view-container">
 				<div class="zpl-header">
 					<h2>Real-Time Generated ZPL Code</h2>
@@ -155,6 +162,16 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
+	}
+
+	.editor-tab-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.hidden {
+		display: none !important;
 	}
 
 	.zpl-view-container {

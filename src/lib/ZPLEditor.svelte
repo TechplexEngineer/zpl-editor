@@ -12,12 +12,14 @@
 		height = $bindable(6.0),
 		dpi = $bindable(300),
 		zpl = $bindable(''),
+		visible = true,
 		onChange = (zplString: string) => {}
 	} = $props<{
 		width?: number;
 		height?: number;
 		dpi?: number;
 		zpl?: string;
+		visible?: boolean;
 		onChange?: (zplString: string) => void;
 	}>();
 
@@ -41,6 +43,14 @@
 			fabricCanvas.calcOffset();
 			fabricCanvas.renderAll();
 			updateZPL();
+		}
+	});
+
+	// Recalculate canvas offset and redraw when element becomes visible
+	$effect(() => {
+		if (visible && fabricCanvas) {
+			fabricCanvas.calcOffset();
+			fabricCanvas.renderAll();
 		}
 	});
 
