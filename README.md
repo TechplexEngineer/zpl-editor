@@ -44,14 +44,14 @@ import ZPLEditor, { ZPLEditor as NamedZPLEditor } from 'zpl-editor';
 
 ### Props
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `width` | `number` | `4.0` | Label width in inches |
-| `height` | `number` | `6.0` | Label height in inches |
-| `dpi` | `number` | `300` | Printer resolution |
-| `zpl` | `string` | `''` | Two-way bound generated ZPL output |
-| `visible` | `boolean` | `true` | Re-renders the canvas when shown in tabbed or conditional layouts |
-| `onChange` | `(zpl: string) => void` | noop | Callback fired whenever the generated ZPL changes |
+| Prop       | Type                    | Default | Description                                                       |
+| ---------- | ----------------------- | ------- | ----------------------------------------------------------------- |
+| `width`    | `number`                | `4.0`   | Label width in inches                                             |
+| `height`   | `number`                | `6.0`   | Label height in inches                                            |
+| `dpi`      | `number`                | `300`   | Printer resolution                                                |
+| `zpl`      | `string`                | `''`    | Two-way bound generated ZPL output                                |
+| `visible`  | `boolean`               | `true`  | Re-renders the canvas when shown in tabbed or conditional layouts |
+| `onChange` | `(zpl: string) => void` | noop    | Callback fired whenever the generated ZPL changes                 |
 
 ## Development
 
