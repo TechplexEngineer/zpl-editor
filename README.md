@@ -83,10 +83,10 @@ npm run build
 
 ## Repository structure
 
-- `/home/runner/work/zpl-editor/zpl-editor/src/lib/ZPLEditor.svelte` – reusable editor component
-- `/home/runner/work/zpl-editor/zpl-editor/src/lib/zpl` – ZPL generation and rendering helpers
-- `/home/runner/work/zpl-editor/zpl-editor/src/routes/+page.svelte` – showcase/demo app
+- `src/lib/ZPLEditor.svelte` – reusable editor component
+- `src/lib/zpl` – ZPL generation and rendering helpers
+- `src/routes/+page.svelte` – showcase/demo app
 
-## Status
+## Current focus
 
-This repository is focused on turning the editor into a reusable building block for Svelte apps that need in-browser ZPL label design and generation.
+The library is currently centered on delivering a reusable editor component for Svelte apps that need in-browser ZPL label design, live ZPL output, and a simple preview workflow.
