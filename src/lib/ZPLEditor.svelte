@@ -34,9 +34,11 @@
 
 	// Synchronize Fabric canvas size when props change
 	$effect(() => {
+		const w = pwDots;
+		const h = llDots;
 		if (fabricCanvas) {
-			fabricCanvas.setWidth(pwDots);
-			fabricCanvas.setHeight(llDots);
+			fabricCanvas.setDimensions({ width: w, height: h });
+			fabricCanvas.calcOffset();
 			fabricCanvas.renderAll();
 			updateZPL();
 		}
@@ -311,7 +313,7 @@
 			<div class="canvas-viewport">
 				<div
 					class="canvas-wrapper"
-					style="transform: scale({zoomScale}); transform-origin: top center;"
+					style="width: {pwDots}px; height: {llDots}px; transform: scale({zoomScale}); transform-origin: top center;"
 				>
 					<canvas bind:this={canvasElement}></canvas>
 				</div>
