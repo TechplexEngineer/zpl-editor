@@ -1,4 +1,4 @@
-export type BarcodeFormat = 'QR' | 'CODE128' | 'CODE39';
+export type BarcodeFormat = 'QR' | 'CODE128' | 'CODE39' | 'DATAMATRIX';
 export type RotationAngle = 0 | 90 | 180 | 270;
 
 export interface LabelConfig {

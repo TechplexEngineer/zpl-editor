@@ -65,6 +65,7 @@
 		"svelte"
 	],
 	"dependencies": {
+		"bwip-js": "^4.11.2",
 		"fabric": "^5.5.2",
 		"jsbarcode": "^3.12.3",
 		"qrcode": "^1.5.4"

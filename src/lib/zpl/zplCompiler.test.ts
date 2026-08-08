@@ -35,4 +35,9 @@ describe('ZPL Compiler Utility Functions', () => {
     const zpl = formatBarcodeZPL({ x: 10, y: 20, text: 'BAR123', format: 'CODE128', width: 200, height: 80, angle: 0 });
     expect(zpl).toBe('^FO10,20^BY2^BCN,80,Y,N,N^FDBAR123^FS\r\n');
   });
+
+  it('formats DataMatrix barcode ZPL correctly', () => {
+    const zpl = formatBarcodeZPL({ x: 30, y: 40, text: 'DM123', format: 'DATAMATRIX', width: 100, height: 100, angle: 0 });
+    expect(zpl).toBe('^FO30,40^BXN,5,200^FDDM123^FS\r\n');
+  });
 });

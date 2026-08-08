@@ -300,6 +300,11 @@
 					<span>Code 128</span>
 				</button>
 
+				<button class="tool-btn" onclick={() => addBarcode('123456', 50, 50, 'DATAMATRIX')}>
+					<span class="icon">▦</span>
+					<span>DataMatrix</span>
+				</button>
+
 				<label class="tool-btn file-btn">
 					<span class="icon">🖼️</span>
 					<span>Image</span>
@@ -398,6 +403,7 @@
 								onchange={(e) => updateBarcodeFormat(e.currentTarget.value as BarcodeFormat)}
 							>
 								<option value="QR">QR Code (Default)</option>
+								<option value="DATAMATRIX">DataMatrix</option>
 								<option value="CODE128">Code 128</option>
 								<option value="CODE39">Code 39</option>
 							</select>
