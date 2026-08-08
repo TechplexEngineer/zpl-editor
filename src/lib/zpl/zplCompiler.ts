@@ -2,6 +2,13 @@ import type { fabric } from 'fabric';
 import type { LabelConfig, BarcodeFormat } from './types.js';
 import { inchesToDots } from './types.js';
 
+function transformLocalPoint(point: { x: number; y: number }, matrix: number[]): { x: number; y: number } {
+  return {
+    x: matrix[0] * point.x + matrix[2] * point.y + matrix[4],
+    y: matrix[1] * point.x + matrix[3] * point.y + matrix[5]
+  };
+}
+
 export function getZPLOrientation(angle: number): string {
   const norm = ((angle % 360) + 360) % 360;
   if (norm === 90) return 'R';
@@ -20,7 +27,7 @@ export function formatTextZPL(opts: { x: number; y: number; text: string; fontSi
   return `^FO${Math.round(opts.x)},${Math.round(opts.y)}^A0${orient},${size},${size}^FD${opts.text}^FS\r\n`;
 }
 
-export function formatRectZPL(opts: { x: number; y: number; width: number; height: number; strokeWidth: number; angle: number }): string {
+export function formatRectZPL(opts: { x: number; y: number; width: number; height: number; strokeWidth: number; angle: number; rounding?: number }): string {
   let w = Math.round(opts.width);
   let h = Math.round(opts.height);
   const norm = ((opts.angle % 360) + 360) % 360;
@@ -28,7 +35,8 @@ export function formatRectZPL(opts: { x: number; y: number; width: number; heigh
     [w, h] = [h, w];
   }
   const t = Math.max(1, Math.round(opts.strokeWidth || 2));
-  return `^FO${Math.round(opts.x)},${Math.round(opts.y)}^GB${w},${h},${t},B,0^FS\r\n`;
+  const r = Math.max(0, Math.min(8, Math.round(opts.rounding || 0)));
+  return `^FO${Math.round(opts.x)},${Math.round(opts.y)}^GB${w},${h},${t},B,${r}^FS\r\n`;
 }
 
 export function formatBarcodeZPL(opts: { x: number; y: number; text: string; format: BarcodeFormat; width: number; height: number; angle: number }): string {
@@ -78,8 +86,34 @@ export function compileFabricCanvasToZPL(canvas: fabric.Canvas, config: LabelCon
         width: (rectObj.width || 100) * (rectObj.scaleX || 1),
         height: (rectObj.height || 50) * (rectObj.scaleY || 1),
         strokeWidth: rectObj.strokeWidth || 2,
-        angle
+        angle,
+        rounding: (rectObj as any).zplRounding || 0
       });
+    } else if (customType === 'circle' || obj.type === 'circle') {
+      const circleObj = obj as fabric.Circle;
+      const r = (circleObj.radius || 50) * (circleObj.scaleX || 1);
+      const diameter = Math.round(r * 2);
+      const t = Math.max(1, Math.round(circleObj.strokeWidth || 2));
+      zpl += `^FO${Math.round(x)},${Math.round(y)}^GC${diameter},${t},B^FS\r\n`;
+    } else if (customType === 'diagonalLine' || customType === 'line' || obj.type === 'line') {
+      const lineObj = obj as fabric.Line;
+      const matrix = lineObj.calcTransformMatrix();
+      const p1 = transformLocalPoint({ x: lineObj.x1 || 0, y: lineObj.y1 || 0 }, matrix);
+      const p2 = transformLocalPoint({ x: lineObj.x2 || 0, y: lineObj.y2 || 0 }, matrix);
+      
+      const minX = Math.min(p1.x, p2.x);
+      const minY = Math.min(p1.y, p2.y);
+      const maxX = Math.max(p1.x, p2.x);
+      const maxY = Math.max(p1.y, p2.y);
+      
+      const w = Math.round(Math.max(1, maxX - minX));
+      const h = Math.round(Math.max(1, maxY - minY));
+      const t = Math.max(1, Math.round(lineObj.strokeWidth || 2));
+      
+      const sameSign = (p1.x < p2.x && p1.y < p2.y) || (p1.x > p2.x && p1.y > p2.y);
+      const orientation = sameSign ? 'L' : 'R';
+      
+      zpl += `^FO${Math.round(minX)},${Math.round(minY)}^GD${w},${h},${t},B,${orientation}^FS\r\n`;
     } else if (customType === 'barcode') {
       zpl += formatBarcodeZPL({
         x,

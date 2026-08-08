@@ -66,6 +66,20 @@
 		fabricCanvas.on('object:modified', updateZPL);
 		fabricCanvas.on('object:added', updateZPL);
 		fabricCanvas.on('object:removed', updateZPL);
+		fabricCanvas.on('object:scaling', (e) => {
+			const obj = e.target;
+			if (obj && (obj as any).zplType === 'rectangle') {
+				const rectObj = obj as fabric.Rect;
+				const roundingVal = (rectObj as any).zplRounding || 0;
+				const w = (rectObj.width || 0) * (rectObj.scaleX || 1);
+				const h = (rectObj.height || 0) * (rectObj.scaleY || 1);
+				const rx = (roundingVal / 8) * (Math.min(w, h) / 2);
+				rectObj.set({
+					rx: rx / (rectObj.scaleX || 1),
+					ry: rx / (rectObj.scaleY || 1)
+				} as any);
+			}
+		});
 
 		// Add default sample elements
 		addText('Sample Label', 100, 100, 48);
@@ -118,11 +132,255 @@
 			fill: 'transparent',
 			stroke: '#000000',
 			strokeWidth: 4,
+			strokeUniform: true,
 			snapAngle: 90
 		});
 		(rectObj as any).zplType = 'rectangle';
+		(rectObj as any).zplRounding = 0;
 		fabricCanvas.add(rectObj);
 		fabricCanvas.setActiveObject(rectObj);
+	}
+
+	function addCircle(x = 50, y = 50, r = 50) {
+		if (!fabricCanvas) return;
+		const circleObj = new fabric.Circle({
+			left: x,
+			top: y,
+			radius: r,
+			fill: 'transparent',
+			stroke: '#000000',
+			strokeWidth: 4,
+			strokeUniform: true,
+			lockUniScaling: true,
+			snapAngle: 90
+		});
+		(circleObj as any).zplType = 'circle';
+		fabricCanvas.add(circleObj);
+		fabricCanvas.setActiveObject(circleObj);
+	}
+
+	const lineControls = {
+		p1: new fabric.Control({
+			x: -0.5,
+			y: -0.5,
+			actionHandler: function(eventData, transform, x, y) {
+				const line = transform.target as fabric.Line;
+				const canvas = line.canvas;
+				if (!canvas) return false;
+				
+				const pointer = canvas.getPointer(eventData);
+				let p1X = pointer.x;
+				let p1Y = pointer.y;
+				
+				// Get p2 in canvas space
+				const p2 = fabric.util.transformPoint(
+					new fabric.Point(line.x2 || 0, line.y2 || 0),
+					line.calcTransformMatrix()
+				);
+				
+				// Snap near vertical (same X as p2)
+				if (Math.abs(p1X - p2.x) < 15) {
+					p1X = p2.x;
+				}
+				// Snap near horizontal (same Y as p2)
+				if (Math.abs(p1Y - p2.y) < 15) {
+					p1Y = p2.y;
+				}
+				
+				// Recalculate bounding box
+				const minX = Math.min(p1X, p2.x);
+				const minY = Math.min(p1Y, p2.y);
+				const maxX = Math.max(p1X, p2.x);
+				const maxY = Math.max(p1Y, p2.y);
+				const w = maxX - minX || 1;
+				const h = maxY - minY || 1;
+				
+				line.set({
+					left: minX,
+					top: minY,
+					width: w,
+					height: h,
+					scaleX: 1,
+					scaleY: 1,
+					x1: p1X - minX - w / 2,
+					y1: p1Y - minY - h / 2,
+					x2: p2.x - minX - w / 2,
+					y2: p2.y - minY - h / 2
+				} as any);
+				
+				line.setCoords();
+				updateZPL();
+				canvas.requestRenderAll();
+				return true;
+			},
+			cursorStyle: 'pointer',
+			render: function(ctx, left, top, styleOverride, fabricObject) {
+				ctx.save();
+				ctx.beginPath();
+				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
+				ctx.fillStyle = '#3b82f6';
+				ctx.fill();
+				ctx.lineWidth = 2;
+				ctx.strokeStyle = '#ffffff';
+				ctx.stroke();
+				ctx.restore();
+			},
+			positionHandler: function(dim, finalMatrix, fabricObject) {
+				const line = fabricObject as fabric.Line;
+				return fabric.util.transformPoint(
+					new fabric.Point(line.x1 || 0, line.y1 || 0),
+					line.calcTransformMatrix()
+				);
+			}
+		}),
+		p2: new fabric.Control({
+			x: 0.5,
+			y: 0.5,
+			actionHandler: function(eventData, transform, x, y) {
+				const line = transform.target as fabric.Line;
+				const canvas = line.canvas;
+				if (!canvas) return false;
+				
+				const pointer = canvas.getPointer(eventData);
+				let p2X = pointer.x;
+				let p2Y = pointer.y;
+				
+				// Get p1 in canvas space
+				const p1 = fabric.util.transformPoint(
+					new fabric.Point(line.x1 || 0, line.y1 || 0),
+					line.calcTransformMatrix()
+				);
+				
+				// Snap near vertical (same X as p1)
+				if (Math.abs(p2X - p1.x) < 15) {
+					p2X = p1.x;
+				}
+				// Snap near horizontal (same Y as p1)
+				if (Math.abs(p2Y - p1.y) < 15) {
+					p2Y = p1.y;
+				}
+				
+				// Recalculate bounding box
+				const minX = Math.min(p1.x, p2X);
+				const minY = Math.min(p1.y, p2Y);
+				const maxX = Math.max(p1.x, p2X);
+				const maxY = Math.max(p1.y, p2Y);
+				const w = maxX - minX || 1;
+				const h = maxY - minY || 1;
+				
+				line.set({
+					left: minX,
+					top: minY,
+					width: w,
+					height: h,
+					scaleX: 1,
+					scaleY: 1,
+					x1: p1.x - minX - w / 2,
+					y1: p1.y - minY - h / 2,
+					x2: p2X - minX - w / 2,
+					y2: p2Y - minY - h / 2
+				} as any);
+				
+				line.setCoords();
+				updateZPL();
+				canvas.requestRenderAll();
+				return true;
+			},
+			cursorStyle: 'pointer',
+			render: function(ctx, left, top, styleOverride, fabricObject) {
+				ctx.save();
+				ctx.beginPath();
+				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
+				ctx.fillStyle = '#3b82f6';
+				ctx.fill();
+				ctx.lineWidth = 2;
+				ctx.strokeStyle = '#ffffff';
+				ctx.stroke();
+				ctx.restore();
+			},
+			positionHandler: function(dim, finalMatrix, fabricObject) {
+				const line = fabricObject as fabric.Line;
+				return fabric.util.transformPoint(
+					new fabric.Point(line.x2 || 0, line.y2 || 0),
+					line.calcTransformMatrix()
+				);
+			}
+		})
+	};
+
+	function addLine(x = 50, y = 50, w = 150, h = 150) {
+		if (!fabricCanvas) return;
+		const lineObj = new fabric.Line([0, 0, w, h], {
+			left: x,
+			top: y,
+			stroke: '#000000',
+			strokeWidth: 4,
+			strokeUniform: true,
+			hasRotatingPoint: false,
+			lockRotation: true
+		});
+		(lineObj as any).zplType = 'line';
+		lineObj.controls = lineControls;
+		fabricCanvas.add(lineObj);
+		fabricCanvas.setActiveObject(lineObj);
+	}
+
+	function updateLineSize(w: number, h: number) {
+		if (!activeObject || (activeObject as any).zplType !== 'line') return;
+		activeObject.set({
+			width: w,
+			height: h,
+			scaleX: 1,
+			scaleY: 1,
+			x1: -w / 2,
+			y1: -h / 2,
+			x2: w / 2,
+			y2: h / 2
+		});
+		activeObject.setCoords();
+		fabricCanvas?.renderAll();
+		updateZPL();
+	}
+
+	function updateRectangleProp(key: 'width' | 'height', val: number) {
+		if (!activeObject || (activeObject as any).zplType !== 'rectangle') return;
+		activeObject.set(key, val);
+		if (key === 'width') {
+			activeObject.set('scaleX', 1);
+		} else {
+			activeObject.set('scaleY', 1);
+		}
+		
+		const roundingVal = (activeObject as any).zplRounding || 0;
+		const w = (activeObject.width || 0) * (activeObject.scaleX || 1);
+		const h = (activeObject.height || 0) * (activeObject.scaleY || 1);
+		const rx = (roundingVal / 8) * (Math.min(w, h) / 2);
+		
+		activeObject.set({
+			rx: rx / (activeObject.scaleX || 1),
+			ry: rx / (activeObject.scaleY || 1)
+		});
+		
+		activeObject.setCoords();
+		fabricCanvas?.renderAll();
+		updateZPL();
+	}
+
+	function updateRectangleRounding(rounding: number) {
+		if (!activeObject || (activeObject as any).zplType !== 'rectangle') return;
+		(activeObject as any).zplRounding = rounding;
+		
+		const w = (activeObject.width || 0) * (activeObject.scaleX || 1);
+		const h = (activeObject.height || 0) * (activeObject.scaleY || 1);
+		const rx = (rounding / 8) * (Math.min(w, h) / 2);
+		
+		activeObject.set({
+			rx: rx / (activeObject.scaleX || 1),
+			ry: rx / (activeObject.scaleY || 1)
+		});
+		
+		fabricCanvas?.renderAll();
+		updateZPL();
 	}
 
 	async function addBarcode(text = 'BARCODE', x = 50, y = 50, format: BarcodeFormat = 'QR') {
@@ -199,6 +457,12 @@
 		setTimeout(() => {
 			copiedNotification = false;
 		}, 2000);
+	}
+
+	function applyPreset(w: number, h: number, presetDpi: number) {
+		width = w;
+		height = h;
+		dpi = presetDpi;
 	}
 
 	// Active Object Property Handlers
@@ -288,6 +552,16 @@
 				<button class="tool-btn" onclick={() => addRectangle()}>
 					<span class="icon">▭</span>
 					<span>Rectangle</span>
+				</button>
+
+				<button class="tool-btn" onclick={() => addCircle()}>
+					<span class="icon">○</span>
+					<span>Circle</span>
+				</button>
+
+				<button class="tool-btn" onclick={() => addLine()}>
+					<span class="icon">╱</span>
+					<span>Line</span>
 				</button>
 
 				<button class="tool-btn" onclick={() => addBarcode('123456', 50, 50, 'QR')}>
@@ -422,14 +696,14 @@
 					</div>
 				{/if}
 
-				{#if activeObject.zplType === 'rectangle' || activeObject.type === 'rect'}
+				{#if activeObject.zplType === 'rectangle'}
 					<div class="prop-grid">
 						<label>
 							<span>Width (dots):</span>
 							<input
 								type="number"
 								value={Math.round((activeObject.width || 0) * (activeObject.scaleX || 1))}
-								oninput={(e) => updateActiveProp('width', parseFloat(e.currentTarget.value))}
+								oninput={(e) => updateRectangleProp('width', parseFloat(e.currentTarget.value))}
 							/>
 						</label>
 						<label>
@@ -437,7 +711,90 @@
 							<input
 								type="number"
 								value={Math.round((activeObject.height || 0) * (activeObject.scaleY || 1))}
-								oninput={(e) => updateActiveProp('height', parseFloat(e.currentTarget.value))}
+								oninput={(e) => updateRectangleProp('height', parseFloat(e.currentTarget.value))}
+							/>
+						</label>
+					</div>
+
+					<div class="prop-field">
+						<label>
+							<span>Corner Rounding (0-8):</span>
+							<div style="display: flex; align-items: center; gap: 0.5rem;">
+								<input
+									type="range"
+									min="0"
+									max="8"
+									step="1"
+									value={(activeObject as any).zplRounding || 0}
+									oninput={(e) => updateRectangleRounding(parseInt(e.currentTarget.value))}
+									style="flex: 1;"
+								/>
+								<span class="zoom-val" style="min-width: 1rem; text-align: right;">{(activeObject as any).zplRounding || 0}</span>
+							</div>
+						</label>
+					</div>
+				{/if}
+
+				{#if activeObject.zplType === 'circle'}
+					<div class="prop-field">
+						<label>
+							<span>Diameter (dots):</span>
+							<input
+								type="number"
+								value={Math.round((activeObject.radius || 0) * 2 * (activeObject.scaleX || 1))}
+								oninput={(e) => {
+									const d = parseFloat(e.currentTarget.value);
+									activeObject.set({
+										radius: d / 2,
+										scaleX: 1,
+										scaleY: 1
+									});
+									activeObject.setCoords();
+									fabricCanvas?.renderAll();
+									updateZPL();
+								}}
+							/>
+						</label>
+					</div>
+				{/if}
+
+				{#if activeObject.zplType === 'line'}
+					<div class="prop-grid">
+						<label>
+							<span>Width (dots):</span>
+							<input
+								type="number"
+								value={Math.round((activeObject.width || 0) * (activeObject.scaleX || 1))}
+								oninput={(e) => {
+									const w = parseFloat(e.currentTarget.value);
+									updateLineSize(w, (activeObject.height || 0) * (activeObject.scaleY || 1));
+								}}
+							/>
+						</label>
+						<label>
+							<span>Height (dots):</span>
+							<input
+								type="number"
+								value={Math.round((activeObject.height || 0) * (activeObject.scaleY || 1))}
+								oninput={(e) => {
+									const h = parseFloat(e.currentTarget.value);
+									updateLineSize((activeObject.width || 0) * (activeObject.scaleX || 1), h);
+								}}
+							/>
+						</label>
+					</div>
+				{/if}
+
+				{#if activeObject.zplType === 'rectangle' || activeObject.zplType === 'circle' || activeObject.zplType === 'line'}
+					<div class="prop-field">
+						<label>
+							<span>Line Thickness (dots):</span>
+							<input
+								type="number"
+								min="1"
+								max="50"
+								value={activeObject.strokeWidth || 4}
+								oninput={(e) => updateActiveProp('strokeWidth', parseInt(e.currentTarget.value))}
 							/>
 						</label>
 					</div>
@@ -445,6 +802,34 @@
 			{:else}
 				<div class="no-selection">
 					<p>Select an item on the canvas to inspect and edit its properties.</p>
+
+					<div class="presets-section">
+						<h4>Presets</h4>
+						<div class="presets-grid">
+							<button
+								class="preset-btn"
+								class:active={width === 4 && height === 6}
+								onclick={() => applyPreset(4.0, 6.0, 300)}
+							>
+								4" × 6" Shipping
+							</button>
+							<button
+								class="preset-btn"
+								class:active={width === 2 && height === 1}
+								onclick={() => applyPreset(2.0, 1.0, 300)}
+							>
+								2" × 1" Product
+							</button>
+							<button
+								class="preset-btn"
+								class:active={width === 3 && height === 2}
+								onclick={() => applyPreset(3.0, 2.0, 300)}
+							>
+								3" × 2" Inventory
+							</button>
+						</div>
+					</div>
+
 					<div class="label-info">
 						<div class="info-row">
 							<span>Canvas Resolution:</span>
@@ -704,5 +1089,50 @@
 		display: flex;
 		justify-content: space-between;
 		font-size: 0.75rem;
+	}
+
+	.presets-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.presets-section h4 {
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: #94a3b8;
+		margin: 0;
+	}
+
+	.presets-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.preset-btn {
+		background: #0f172a;
+		border: 1px solid #334155;
+		color: #94a3b8;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.375rem;
+		cursor: pointer;
+		font-size: 0.8rem;
+		text-align: left;
+		transition: all 0.15s ease;
+		width: 100%;
+	}
+
+	.preset-btn:hover {
+		color: #f8fafc;
+		border-color: #3b82f6;
+	}
+
+	.preset-btn.active {
+		background: #3b82f6;
+		color: #ffffff;
+		border-color: #3b82f6;
+		font-weight: 600;
 	}
 </style>
