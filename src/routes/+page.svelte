@@ -11,7 +11,7 @@
 	let labelaryUrl = $derived.by(() => {
 		if (!zplOutput) return '';
 		const dpmm = Math.round(labelDpi / 25.4);
-		return `http://labelary.com/v1/printers/${dpmm}dpmm/labels/${labelWidth}x${labelHeight}/0/${encodeURIComponent(zplOutput)}`;
+		return `https://api.labelary.com/v1/printers/${dpmm}dpmm/labels/${labelWidth}x${labelHeight}/0/${encodeURIComponent(zplOutput)}`;
 	});
 
 	function applyPreset(w: number, h: number, dpi: number) {
