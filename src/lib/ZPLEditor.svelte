@@ -89,6 +89,13 @@
 					ry: rx / (rectObj.scaleY || 1)
 				} as any);
 			}
+			if (obj && (obj as any).zplType === 'barcode') {
+				const scale = Math.max(obj.scaleX || 1, obj.scaleY || 1);
+				obj.set({
+					scaleX: scale,
+					scaleY: scale
+				});
+			}
 		});
 
 		// Add default sample elements
@@ -401,7 +408,14 @@
 			img.set({
 				left: x,
 				top: y,
-				snapAngle: 90
+				snapAngle: 90,
+				lockUniScaling: true
+			});
+			img.setControlsVisibility({
+				mt: false,
+				mb: false,
+				ml: false,
+				mr: false
 			});
 			(img as any).zplType = 'barcode';
 			(img as any).zplData = text;
