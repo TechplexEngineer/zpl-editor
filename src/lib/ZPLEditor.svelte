@@ -78,7 +78,13 @@
 			activeObject = null;
 		});
 
-		fabricCanvas.on('object:modified', updateZPL);
+		fabricCanvas.on('object:modified', (e) => {
+			const obj = e.target;
+			if (obj && (obj as any).zplType === 'line') {
+				centerLine(obj as fabric.Line);
+			}
+			updateZPL();
+		});
 		fabricCanvas.on('object:added', updateZPL);
 		fabricCanvas.on('object:removed', updateZPL);
 		fabricCanvas.on('object:scaling', (e) => {
@@ -185,58 +191,37 @@
 		p1: new fabric.Control({
 			x: -0.5,
 			y: -0.5,
-			actionHandler: function (eventData, transform, x, y) {
+			actionHandler: function(eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-
+				
 				const pointer = canvas.getPointer(eventData);
-				let p1X = pointer.x;
-				let p1Y = pointer.y;
-
-				// Get p2 in canvas space
-				const p2 = fabric.util.transformPoint(
-					new fabric.Point(line.x2 || 0, line.y2 || 0),
-					line.calcTransformMatrix()
-				);
-
-				// Snap near vertical (same X as p2)
-				if (Math.abs(p1X - p2.x) < 15) {
-					p1X = p2.x;
+				let p1X = pointer.x - (line.left || 0);
+				let p1Y = pointer.y - (line.top || 0);
+				console.log('p1 dragging: x =', pointer.x, 'y =', pointer.y, 'line.left =', line.left, 'line.top =', line.top, '-> local p1X =', p1X, 'p1Y =', p1Y);
+				
+				// Snap near vertical (same X as line.x2)
+				if (Math.abs(p1X - line.x2!) < 15) {
+					p1X = line.x2!;
 				}
-				// Snap near horizontal (same Y as p2)
-				if (Math.abs(p1Y - p2.y) < 15) {
-					p1Y = p2.y;
+				// Snap near horizontal (same Y as line.y2)
+				if (Math.abs(p1Y - line.y2!) < 15) {
+					p1Y = line.y2!;
 				}
-
-				// Recalculate bounding box
-				const minX = Math.min(p1X, p2.x);
-				const minY = Math.min(p1Y, p2.y);
-				const maxX = Math.max(p1X, p2.x);
-				const maxY = Math.max(p1Y, p2.y);
-				const w = maxX - minX || 1;
-				const h = maxY - minY || 1;
-
+				
 				line.set({
-					left: minX,
-					top: minY,
-					width: w,
-					height: h,
-					scaleX: 1,
-					scaleY: 1,
-					x1: p1X - minX - w / 2,
-					y1: p1Y - minY - h / 2,
-					x2: p2.x - minX - w / 2,
-					y2: p2.y - minY - h / 2
-				} as any);
-
+					x1: p1X,
+					y1: p1Y
+				});
+				
 				line.setCoords();
 				updateZPL();
 				canvas.requestRenderAll();
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function (ctx, left, top, styleOverride, fabricObject) {
+			render: function(ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -247,69 +232,47 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function (dim, finalMatrix, fabricObject) {
+			positionHandler: function(dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
-					line.calcTransformMatrix()
+					finalMatrix
 				);
 			}
 		}),
 		p2: new fabric.Control({
 			x: 0.5,
 			y: 0.5,
-			actionHandler: function (eventData, transform, x, y) {
+			actionHandler: function(eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-
+				
 				const pointer = canvas.getPointer(eventData);
-				let p2X = pointer.x;
-				let p2Y = pointer.y;
-
-				// Get p1 in canvas space
-				const p1 = fabric.util.transformPoint(
-					new fabric.Point(line.x1 || 0, line.y1 || 0),
-					line.calcTransformMatrix()
-				);
-
-				// Snap near vertical (same X as p1)
-				if (Math.abs(p2X - p1.x) < 15) {
-					p2X = p1.x;
+				let p2X = pointer.x - (line.left || 0);
+				let p2Y = pointer.y - (line.top || 0);
+				
+				// Snap near vertical (same X as line.x1)
+				if (Math.abs(p2X - line.x1!) < 15) {
+					p2X = line.x1!;
 				}
-				// Snap near horizontal (same Y as p1)
-				if (Math.abs(p2Y - p1.y) < 15) {
-					p2Y = p1.y;
+				// Snap near horizontal (same Y as line.y1)
+				if (Math.abs(p2Y - line.y1!) < 15) {
+					p2Y = line.y1!;
 				}
-
-				// Recalculate bounding box
-				const minX = Math.min(p1.x, p2X);
-				const minY = Math.min(p1.y, p2Y);
-				const maxX = Math.max(p1.x, p2X);
-				const maxY = Math.max(p1.y, p2Y);
-				const w = maxX - minX || 1;
-				const h = maxY - minY || 1;
-
+				
 				line.set({
-					left: minX,
-					top: minY,
-					width: w,
-					height: h,
-					scaleX: 1,
-					scaleY: 1,
-					x1: p1.x - minX - w / 2,
-					y1: p1.y - minY - h / 2,
-					x2: p2X - minX - w / 2,
-					y2: p2Y - minY - h / 2
-				} as any);
-
+					x2: p2X,
+					y2: p2Y
+				});
+				
 				line.setCoords();
 				updateZPL();
 				canvas.requestRenderAll();
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function (ctx, left, top, styleOverride, fabricObject) {
+			render: function(ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -320,26 +283,72 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function (dim, finalMatrix, fabricObject) {
+			positionHandler: function(dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
-					line.calcTransformMatrix()
+					finalMatrix
 				);
 			}
 		})
 	};
 
+	function centerLine(line: fabric.Line) {
+		const x1 = line.x1 || 0;
+		const y1 = line.y1 || 0;
+		const x2 = line.x2 || 0;
+		const y2 = line.y2 || 0;
+		
+		const currentLeft = line.left || 0;
+		const currentTop = line.top || 0;
+		
+		const p1x = currentLeft + x1;
+		const p1y = currentTop + y1;
+		const p2x = currentLeft + x2;
+		const p2y = currentTop + y2;
+		
+		const minX = Math.min(p1x, p2x);
+		const minY = Math.min(p1y, p2y);
+		const maxX = Math.max(p1x, p2x);
+		const maxY = Math.max(p1y, p2y);
+		const w = maxX - minX || 1;
+		const h = maxY - minY || 1;
+		
+		const centerX = minX + w / 2;
+		const centerY = minY + h / 2;
+		console.log('centerLine: currentLeft =', currentLeft, 'currentTop =', currentTop, 'p1x =', p1x, 'p1y =', p1y, 'centerX =', centerX, 'centerY =', centerY);
+		
+		line.set({
+			left: centerX,
+			top: centerY,
+			originX: 'center',
+			originY: 'center',
+			width: w,
+			height: h,
+			scaleX: 1,
+			scaleY: 1,
+			x1: p1x - centerX,
+			y1: p1y - centerY,
+			x2: p2x - centerX,
+			y2: p2y - centerY
+		} as any);
+		
+		line.setCoords();
+	}
+
 	function addLine(x = 50, y = 50, w = 150, h = 150) {
 		if (!fabricCanvas) return;
-		const lineObj = new fabric.Line([0, 0, w, h], {
-			left: x,
-			top: y,
+		const lineObj = new fabric.Line([-w / 2, -h / 2, w / 2, h / 2], {
+			left: x + w / 2,
+			top: y + h / 2,
+			originX: 'center',
+			originY: 'center',
 			stroke: '#000000',
 			strokeWidth: 4,
 			strokeUniform: true,
 			hasRotatingPoint: false,
-			lockRotation: true
+			lockRotation: true,
+			hasBorders: false
 		});
 		(lineObj as any).zplType = 'line';
 		lineObj.controls = lineControls;
