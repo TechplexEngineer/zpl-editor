@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderBarcodeDataUrl } from './barcodeRenderer';
+import { renderBarcodeDataUrl } from './barcodeRenderer.js';
 
 describe('barcodeRenderer', () => {
   it('generates a valid data URL for QR code', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { inchesToDots, dotsToInches } from './types';
+import { inchesToDots, dotsToInches } from './types.js';
 
 describe('DPI Conversions', () => {
   it('converts inches to dots at 300 DPI', () => {

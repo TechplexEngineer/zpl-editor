@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateZPLHeader, formatTextZPL, formatRectZPL, formatBarcodeZPL, getZPLOrientation } from './zplCompiler';
+import { generateZPLHeader, formatTextZPL, formatRectZPL, formatBarcodeZPL, getZPLOrientation } from './zplCompiler.js';
 
 describe('ZPL Compiler Utility Functions', () => {
   it('maps degrees to ZPL orientation code', () => {

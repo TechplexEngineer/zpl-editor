@@ -1,6 +1,6 @@
 import type { fabric } from 'fabric';
-import type { LabelConfig, BarcodeFormat } from './types';
-import { inchesToDots } from './types';
+import type { LabelConfig, BarcodeFormat } from './types.js';
+import { inchesToDots } from './types.js';
 
 export function getZPLOrientation(angle: number): string {
   const norm = ((angle % 360) + 360) % 360;

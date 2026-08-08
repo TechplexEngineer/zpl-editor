@@ -1,6 +1,6 @@
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
-import type { BarcodeFormat } from './types';
+import type { BarcodeFormat } from './types.js';
 
 export async function renderBarcodeDataUrl(text: string, format: BarcodeFormat): Promise<string> {
   if (format === 'QR') {

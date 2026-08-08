@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rgbaToZplGF } from './imageDither';
+import { rgbaToZplGF } from './imageDither.js';
 
 describe('imageDither', () => {
   it('converts 8x1 black pixel row to hex GRF string', () => {
