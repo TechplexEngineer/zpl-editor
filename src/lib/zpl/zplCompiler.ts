@@ -39,6 +39,9 @@ export function formatBarcodeZPL(opts: { x: number; y: number; text: string; for
   if (opts.format === 'QR') {
     const mag = Math.max(1, Math.min(10, Math.round(opts.width / 40)));
     return `^FO${x},${y}^BQN,2,${mag}^FDQA,${opts.text}^FS\r\n`;
+  } else if (opts.format === 'DATAMATRIX') {
+    const height = Math.max(2, Math.min(10, Math.round(opts.height / 20)));
+    return `^FO${x},${y}^BX${orient},${height},200^FD${opts.text}^FS\r\n`;
   } else if (opts.format === 'CODE128') {
     return `^FO${x},${y}^BY2^BC${orient},${Math.round(opts.height)},Y,N,N^FD${opts.text}^FS\r\n`;
   } else {
