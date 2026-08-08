@@ -1,65 +1,92 @@
-# Svelte library
+# zpl-editor
 
-Everything you need to build a Svelte library, powered by [`sv`](https://npmjs.com/package/sv).
+`zpl-editor` is a Svelte library for building reusable WYSIWYG Zebra Programming Language (ZPL) editors inside Svelte applications.
 
-Read more about creating a library [in the docs](https://svelte.dev/docs/kit/packaging).
+The goal of the project is to make label design feel visual in the browser while still producing real ZPL output that can be copied, stored, previewed, and sent to Zebra-compatible printers.
 
-## Creating a project
+## What it provides
 
-If you're seeing this, you've probably already done this step. Congrats!
+- A reusable `ZPLEditor` Svelte component
+- Visual canvas-based label editing
+- Real-time ZPL generation
+- Bindable label size, height, width, and DPI settings
+- Support for text, rectangles, circles, lines, barcodes, and images
+- A local demo app for previewing the component during development
 
-```sh
-# create a new project in the current directory
-npx sv create
+## Installation
 
-# create a new project in my-app
-npx sv create my-app
+```bash
+npm install zpl-editor
 ```
 
-To recreate this project with the same configuration:
+## Basic usage
 
-```sh
-# recreate this project
-npx sv@0.17.0 create --template library --types ts --add prettier eslint vitest="usages:unit,component" --install npm ./
+```svelte
+<script lang="ts">
+	import { ZPLEditor } from 'zpl-editor';
+
+	let width = 4;
+	let height = 6;
+	let dpi = 300;
+	let zpl = '';
+</script>
+
+<ZPLEditor bind:width bind:height bind:dpi bind:zpl />
 ```
 
-## Developing
+## Component API
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+The exported component is available as both the default export and a named export:
 
-```sh
+```ts
+import ZPLEditor, { ZPLEditor as NamedZPLEditor } from 'zpl-editor';
+```
+
+### Props
+
+| Prop       | Type                    | Default | Description                                                       |
+| ---------- | ----------------------- | ------- | ----------------------------------------------------------------- |
+| `width`    | `number`                | `4.0`   | Label width in inches                                             |
+| `height`   | `number`                | `6.0`   | Label height in inches                                            |
+| `dpi`      | `number`                | `300`   | Printer resolution                                                |
+| `zpl`      | `string`                | `''`    | Two-way bound generated ZPL output                                |
+| `visible`  | `boolean`               | `true`  | Re-renders the canvas when shown in tabbed or conditional layouts |
+| `onChange` | `(zpl: string) => void` | noop    | Callback fired whenever the generated ZPL changes                 |
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the local demo app:
+
+```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
+Run the existing checks:
 
-## Building
-
-To build your library:
-
-```sh
-npm pack
+```bash
+npm run check
+npm run lint
+npm test
 ```
 
-To create a production version of your showcase app:
+Build the library package:
 
-```sh
+```bash
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+## Repository structure
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- `src/lib/ZPLEditor.svelte` – reusable editor component
+- `src/lib/zpl` – ZPL generation and rendering helpers
+- `src/routes/+page.svelte` – showcase/demo app
 
-## Publishing
+## Current focus
 
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
-
-To publish your library to [npm](https://www.npmjs.com):
-
-```sh
-npm publish
-```
+The library is currently centered on delivering a reusable editor component for Svelte apps that need in-browser ZPL label design, live ZPL output, and a simple preview workflow.
