@@ -104,7 +104,7 @@ describe('ZPL Editor Page', () => {
 		await expect.element(widthInput).toHaveValue(4);
 
 		await widthInput.click();
-		await userEvent.keyboard('{Control>}a{/Control}5');
+		await userEvent.keyboard('{Control>}a{/Control}{Meta>}a{/Meta}5');
 		await page.getByText('🏷️ ZPL Editor', { exact: true }).click();
 
 		await expect.element(widthInput).toHaveValue(5);

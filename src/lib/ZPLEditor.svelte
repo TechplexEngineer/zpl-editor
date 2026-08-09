@@ -115,6 +115,15 @@
 				e.target.angle = Math.round(e.target.angle / 90) * 90;
 			}
 		});
+		fabricCanvas.on('object:moving', (e) => {
+			const obj = e.target;
+			if (obj) {
+				obj.set({
+					left: Math.round(obj.left || 0),
+					top: Math.round(obj.top || 0)
+				});
+			}
+		});
 
 		fabricCanvas.on('object:modified', (e) => {
 			const obj = e.target;
@@ -138,7 +147,27 @@
 		});
 		fabricCanvas.on('object:scaling', (e) => {
 			const obj = e.target;
-			if (obj && (obj as any).zplType === 'rectangle') {
+			if (!obj) return;
+
+			if ((obj as any).zplType === 'barcode') {
+				const scale = Math.max(1, Math.round(Math.max(obj.scaleX || 1, obj.scaleY || 1)));
+				obj.set({
+					scaleX: scale,
+					scaleY: scale
+				});
+			} else {
+				// Snap the visual width and height to integer pixels
+				if (obj.width && obj.scaleX) {
+					const targetWidth = Math.round(obj.width * obj.scaleX);
+					obj.set('scaleX', targetWidth / obj.width);
+				}
+				if (obj.height && obj.scaleY) {
+					const targetHeight = Math.round(obj.height * obj.scaleY);
+					obj.set('scaleY', targetHeight / obj.height);
+				}
+			}
+
+			if ((obj as any).zplType === 'rectangle') {
 				const rectObj = obj as fabric.Rect;
 				const roundingVal = (rectObj as any).zplRounding || 0;
 				const w = (rectObj.width || 0) * (rectObj.scaleX || 1);
@@ -149,13 +178,6 @@
 					ry: rx / (rectObj.scaleY || 1)
 				} as any);
 			}
-			if (obj && (obj as any).zplType === 'barcode') {
-				const scale = Math.max(obj.scaleX || 1, obj.scaleY || 1);
-				obj.set({
-					scaleX: scale,
-					scaleY: scale
-				});
-			}
 		});
 
 		// Add default sample elements
@@ -163,6 +185,7 @@
 
 		return () => {
 			fabricCanvas?.dispose();
+			fabricCanvas = null;
 		};
 	});
 
@@ -376,7 +399,7 @@
 			left: x,
 			top: y,
 			fontSize: size,
-			fontFamily: 'Helvetica, Arial, sans-serif',
+			fontFamily: 'CG Triumvirate, Helvetica, Arial, sans-serif',
 			fill: '#000000',
 			snapAngle: 90
 		});
@@ -430,18 +453,18 @@
 		p1: new fabric.Control({
 			x: -0.5,
 			y: -0.5,
-			actionHandler: function(eventData, transform, x, y) {
+			actionHandler: function (eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-				
+
 				const pointer = canvas.getPointer(eventData);
 				const matrix = line.calcTransformMatrix();
 				const p2Abs = fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
 					matrix
 				);
-				
+
 				let p1AbsX = pointer.x;
 				let p1AbsY = pointer.y;
 
@@ -483,7 +506,7 @@
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function(ctx, left, top, styleOverride, fabricObject) {
+			render: function (ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -494,7 +517,7 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function(dim, finalMatrix, fabricObject) {
+			positionHandler: function (dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
@@ -505,21 +528,21 @@
 		p2: new fabric.Control({
 			x: 0.5,
 			y: 0.5,
-			actionHandler: function(eventData, transform, x, y) {
+			actionHandler: function (eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-				
+
 				const pointer = canvas.getPointer(eventData);
 				const matrix = line.calcTransformMatrix();
 				const p1Abs = fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
 					matrix
 				);
-				
+
 				let p2AbsX = pointer.x;
 				let p2AbsY = pointer.y;
-				
+
 				// Snap near vertical (same X as p1)
 				if (Math.abs(p2AbsX - p1Abs.x) < 15) {
 					p2AbsX = p1Abs.x;
@@ -558,7 +581,7 @@
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function(ctx, left, top, styleOverride, fabricObject) {
+			render: function (ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -569,7 +592,7 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function(dim, finalMatrix, fabricObject) {
+			positionHandler: function (dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
@@ -1401,6 +1424,14 @@
 </div>
 
 <style>
+	@font-face {
+		font-family: 'CG Triumvirate';
+		src: url('/triumvirate-cg-comp/triumviratecgcomp.otf') format('opentype');
+		font-weight: normal;
+		font-style: normal;
+		font-display: swap;
+	}
+
 	:global(*) {
 		box-sizing: border-box;
 	}
