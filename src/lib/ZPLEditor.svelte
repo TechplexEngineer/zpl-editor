@@ -78,6 +78,16 @@
 			activeObject = null;
 		});
 
+		fabricCanvas.on('object:moving', (e) => {
+			const obj = e.target;
+			if (obj) {
+				obj.set({
+					left: Math.round(obj.left || 0),
+					top: Math.round(obj.top || 0)
+				});
+			}
+		});
+
 		fabricCanvas.on('object:modified', (e) => {
 			const obj = e.target;
 			if (obj && (obj as any).zplType === 'line') {
@@ -115,6 +125,7 @@
 
 		return () => {
 			fabricCanvas?.dispose();
+			fabricCanvas = null;
 		};
 	});
 
@@ -465,6 +476,7 @@
 		const dataUrl = await renderBarcodeDataUrl(text, format);
 
 		fabric.Image.fromURL(dataUrl, (img) => {
+			if (!fabricCanvas) return;
 			img.set({
 				left: x,
 				top: y,
@@ -481,8 +493,8 @@
 			(img as any).zplData = text;
 			(img as any).barcodeFormat = format;
 
-			fabricCanvas?.add(img);
-			fabricCanvas?.setActiveObject(img);
+			fabricCanvas.add(img);
+			fabricCanvas.setActiveObject(img);
 			updateZPL();
 		});
 	}
