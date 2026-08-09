@@ -98,26 +98,23 @@ describe('ZPL Editor Page', () => {
 
 		await expect.element(page.getByText('🏷️ ZPL Editor', { exact: true })).toBeInTheDocument();
 
-		const widthInput = document.querySelector('input[type="number"]') as HTMLInputElement | null;
+		const widthInput = page.getByRole('spinbutton', { name: /width \(in\)/i });
 		const undoButton = page.getByRole('button', { name: 'Undo', exact: true });
 		const redoButton = page.getByRole('button', { name: 'Redo', exact: true });
-		expect(widthInput).not.toBeNull();
-		expect(widthInput?.value).toBe('4');
+		await expect.element(widthInput).toHaveValue(4);
 
-		widthInput!.focus();
-		widthInput!.select();
-		await userEvent.keyboard('5');
+		await widthInput.click();
+		await userEvent.keyboard('{Control>}a{/Control}5');
+		await page.getByText('🏷️ ZPL Editor', { exact: true }).click();
 
-		expect(widthInput!.value).toBe('5');
+		await expect.element(widthInput).toHaveValue(5);
 
 		await undoButton.click();
 
-		const restoredInput = document.querySelector('input[type="number"]') as HTMLInputElement | null;
-		expect(restoredInput?.value).toBe('4');
+		await expect.element(widthInput).toHaveValue(4);
 
 		await redoButton.click();
 
-		const redoneInput = document.querySelector('input[type="number"]') as HTMLInputElement | null;
-		expect(redoneInput?.value).toBe('5');
+		await expect.element(widthInput).toHaveValue(5);
 	});
 });

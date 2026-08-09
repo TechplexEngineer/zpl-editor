@@ -131,10 +131,7 @@
 			updateZPL();
 			pushHistorySnapshot();
 		});
-		fabricCanvas.on('object:removed', () => {
-			updateZPL();
-			pushHistorySnapshot();
-		});
+		fabricCanvas.on('object:removed', updateZPL);
 		fabricCanvas.on('text:changed', () => {
 			updateZPL();
 			pushHistorySnapshot();
@@ -303,6 +300,7 @@
 		}
 
 		const snapshot = historyStack[targetIndex];
+		const canvas = fabricCanvas;
 		historyIndex = targetIndex;
 		isRestoringHistory = true;
 		suppressHistory = true;
@@ -312,21 +310,26 @@
 		dpi = snapshot.dpi;
 		lastLabelConfig = `${snapshot.width}:${snapshot.height}:${snapshot.dpi}`;
 
-		syncCanvasDimensions(inchesToDots(snapshot.width, snapshot.dpi), inchesToDots(snapshot.height, snapshot.dpi));
+		try {
+			syncCanvasDimensions(
+				inchesToDots(snapshot.width, snapshot.dpi),
+				inchesToDots(snapshot.height, snapshot.dpi)
+			);
 
-		await new Promise<void>((resolve) => {
-			fabricCanvas?.loadFromJSON(snapshot.canvas, () => {
-				rehydrateCanvasObjects();
-				restoreActiveObject(snapshot.activeObjectId);
-				fabricCanvas?.calcOffset();
-				fabricCanvas?.requestRenderAll();
-				updateZPL();
-				resolve();
+			await new Promise<void>((resolve) => {
+				canvas.loadFromJSON(snapshot.canvas, () => {
+					rehydrateCanvasObjects();
+					restoreActiveObject(snapshot.activeObjectId);
+					canvas.calcOffset();
+					canvas.requestRenderAll();
+					updateZPL();
+					resolve();
+				});
 			});
-		});
-
-		suppressHistory = false;
-		isRestoringHistory = false;
+		} finally {
+			suppressHistory = false;
+			isRestoringHistory = false;
+		}
 	}
 
 	async function undo() {
@@ -908,7 +911,7 @@
 					min="0.5"
 					max="12"
 					value={width}
-					oninput={(e) => applyLabelSettings(parseFloat(e.currentTarget.value), height, dpi)}
+					onchange={(e) => applyLabelSettings(parseFloat(e.currentTarget.value), height, dpi)}
 				/>
 			</label>
 
@@ -920,7 +923,7 @@
 					min="0.5"
 					max="12"
 					value={height}
-					oninput={(e) => applyLabelSettings(width, parseFloat(e.currentTarget.value), dpi)}
+					onchange={(e) => applyLabelSettings(width, parseFloat(e.currentTarget.value), dpi)}
 				/>
 			</label>
 
@@ -1108,8 +1111,8 @@
 						</label>
 					</div>
 
-					<div class="prop-field">
-						<label><span>Alignment (ZPL FB Block):</span></label>
+					<fieldset class="prop-field align-fieldset">
+						<legend>Alignment (ZPL FB Block):</legend>
 						<div class="align-group">
 							<button class="align-btn" class:active={forceRender > -1 && (!activeObject.textAlign || activeObject.textAlign === 'left')} onclick={() => updateActiveProp('textAlign', 'left')} title="Left">
 								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h8v2H2V7zm0 4h12v2H2v-2z"/></svg>
@@ -1124,7 +1127,7 @@
 								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h12v2H2v-2z"/></svg>
 							</button>
 						</div>
-					</div>
+					</fieldset>
 				{/if}
 
 				{#if activeObject.zplType === 'barcode'}
@@ -1504,6 +1507,20 @@
 	.prop-field input,
 	.prop-field select {
 		width: 100%;
+	}
+
+	.align-fieldset {
+		border: 0;
+		margin: 0;
+		padding: 0;
+		min-inline-size: 0;
+	}
+
+	.align-fieldset legend {
+		padding: 0;
+		margin-bottom: 0.3rem;
+		color: inherit;
+		font-size: inherit;
 	}
 
 	.btn {
