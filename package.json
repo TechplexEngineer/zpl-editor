@@ -69,5 +69,11 @@
 		"fabric": "^5.5.2",
 		"jsbarcode": "^3.12.3",
 		"qrcode": "^1.5.4"
+	},
+	"overrides": {
+		"fabric": {
+			"canvas": "npm:noop2@^2.0.0",
+			"jsdom": "npm:noop2@^2.0.0"
+		}
 	}
 }
