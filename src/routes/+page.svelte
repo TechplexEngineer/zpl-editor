@@ -13,6 +13,20 @@
 		const dpmm = Math.round(labelDpi / 25.4);
 		return `https://api.labelary.com/v1/printers/${dpmm}dpmm/labels/${labelWidth}x${labelHeight}/0/${encodeURIComponent(zplOutput)}`;
 	});
+
+	function downloadZPL() {
+		if (!zplOutput) return;
+		const blob = new Blob([zplOutput], { type: 'text/plain;charset=utf-8' });
+		const url = URL.createObjectURL(blob);
+		const timestamp = new Date().toISOString().replace(/:/g, '-');
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `label-${timestamp}.zpl`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
 </script>
 
 <svelte:head>
@@ -67,9 +81,14 @@
 			<div class="zpl-view-container">
 				<div class="zpl-header">
 					<h2>Real-Time Generated ZPL Code</h2>
-					<button class="copy-btn" onclick={() => navigator.clipboard.writeText(zplOutput)}>
-						Copy ZPL
-					</button>
+					<div class="zpl-actions">
+						<button class="download-btn" onclick={downloadZPL}>
+							Download ZPL
+						</button>
+						<button class="copy-btn" onclick={() => navigator.clipboard.writeText(zplOutput)}>
+							Copy ZPL
+						</button>
+					</div>
 				</div>
 				<pre class="zpl-code"><code>{zplOutput}</code></pre>
 			</div>
@@ -196,6 +215,26 @@
 	.zpl-header h2 {
 		margin: 0;
 		font-size: 1.25rem;
+	}
+
+	.zpl-actions {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.download-btn {
+		background: #475569;
+		color: #ffffff;
+		border: none;
+		padding: 0.5rem 1rem;
+		border-radius: 0.375rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.download-btn:hover {
+		background: #334155;
 	}
 
 	.copy-btn {

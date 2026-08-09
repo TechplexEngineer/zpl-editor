@@ -543,6 +543,19 @@
 		}, 2000);
 	}
 
+	function downloadZPL() {
+		const blob = new Blob([zpl], { type: 'text/plain;charset=utf-8' });
+		const url = URL.createObjectURL(blob);
+		const timestamp = new Date().toISOString().replace(/:/g, '-');
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `label-${timestamp}.zpl`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+
 	function applyPreset(w: number, h: number, presetDpi: number) {
 		width = w;
 		height = h;
@@ -647,6 +660,9 @@
 		</div>
 
 		<div class="toolbar-actions">
+			<button class="btn btn-secondary" onclick={downloadZPL}>
+				Download ZPL
+			</button>
 			<button class="btn btn-accent" onclick={copyZPL}>
 				{copiedNotification ? '✓ Copied!' : 'Copy ZPL'}
 			</button>
@@ -1171,6 +1187,21 @@
 		font-weight: 600;
 		font-size: 0.85rem;
 		transition: background 0.15s ease;
+	}
+
+	.toolbar-actions {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.btn-secondary {
+		background: #475569;
+		color: #ffffff;
+	}
+
+	.btn-secondary:hover {
+		background: #334155;
 	}
 
 	.btn-accent {
