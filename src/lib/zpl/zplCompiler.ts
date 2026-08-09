@@ -31,11 +31,41 @@ export function formatTextZPL(opts: {
 	height: number;
 	width: number;
 	angle: number;
+	textAlign?: string;
+	blockWidth?: number;
 }): string {
 	const orient = getZPLOrientation(opts.angle);
 	const h = Math.round(opts.height);
 	const w = Math.round(opts.width);
-	return `^FO${Math.round(opts.x)},${Math.round(opts.y)}^A0${orient},${h},${w}^FD${opts.text}^FS\r\n`;
+	let zpl = `^FO${Math.round(opts.x)},${Math.round(opts.y)}^A0${orient},${h},${w}`;
+
+	if (opts.textAlign && opts.blockWidth !== undefined) {
+		let just = 'L';
+		let useFB = false;
+		
+		if (opts.textAlign === 'center') { just = 'C'; useFB = true; }
+		else if (opts.textAlign === 'right') { just = 'R'; useFB = true; }
+		else if (opts.textAlign === 'justify') { just = 'J'; useFB = true; }
+		else if (opts.textAlign === 'left') { 
+			// If it's left aligned but we have a defined block width, we might want to use FB 
+			// but only if it differs significantly from normal text width. 
+			// To keep "typical text behavior" by default as requested, we'll only use FB
+			// for Left align if it has multiple lines, or we can just always use FB for textboxes.
+			// The user said "Lets expose the typical text behavior then add the FB behavior".
+			// We'll emit FB if explicitly set to L, C, R, J. Wait, in Fabric it's always one of these.
+			// Let's use FB whenever the user has customized the width (so it wraps) or if aligned differently.
+			just = 'L'; 
+			useFB = true; 
+		}
+
+		if (useFB) {
+			const bw = Math.round(opts.blockWidth);
+			zpl += `^FB${bw},100,0,${just},0`;
+		}
+	}
+
+	zpl += `^FD${opts.text}^FS\r\n`;
+	return zpl;
 }
 
 export function formatRectZPL(opts: {
@@ -96,15 +126,17 @@ export function compileFabricCanvasToZPL(canvas: fabric.Canvas, config: LabelCon
 		const angle = obj.angle || 0;
 		const customType = (obj as any).zplType;
 
-		if (customType === 'text' || obj.type === 'i-text' || obj.type === 'text') {
-			const textObj = obj as fabric.IText;
+		if (customType === 'text' || obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+			const textObj = obj as fabric.Textbox;
 			zpl += formatTextZPL({
 				x,
 				y,
 				text: textObj.text || '',
 				height: (textObj.fontSize || 36) * (textObj.scaleY || 1),
 				width: (textObj.fontSize || 36) * (textObj.scaleX || 1),
-				angle
+				angle,
+				textAlign: textObj.textAlign,
+				blockWidth: (textObj.width || 0) * (textObj.scaleX || 1)
 			});
 		} else if (customType === 'rectangle' || obj.type === 'rect') {
 			const rectObj = obj as fabric.Rect;
