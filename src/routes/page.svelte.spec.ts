@@ -73,4 +73,48 @@ describe('ZPL Editor Page', () => {
 		// Verify the "Delete" button is still in the document (item was NOT deleted)
 		await expect.element(deleteButton).toBeInTheDocument();
 	});
+
+	it('undoes and redoes canvas deletion from the toolbar', async () => {
+		render(Page);
+
+		await expect.element(page.getByText('🏷️ ZPL Editor', { exact: true })).toBeInTheDocument();
+
+		const deleteButton = page.getByRole('button', { name: 'Delete', exact: true });
+		const undoButton = page.getByRole('button', { name: 'Undo', exact: true });
+		const redoButton = page.getByRole('button', { name: 'Redo', exact: true });
+
+		await deleteButton.click();
+		await expect.element(deleteButton).not.toBeInTheDocument();
+
+		await undoButton.click();
+		await expect.element(page.getByRole('button', { name: 'Delete', exact: true })).toBeInTheDocument();
+
+		await redoButton.click();
+		await expect.element(page.getByRole('button', { name: 'Delete', exact: true })).not.toBeInTheDocument();
+	});
+
+	it('undoes and redoes toolbar property changes', async () => {
+		render(Page);
+
+		await expect.element(page.getByText('🏷️ ZPL Editor', { exact: true })).toBeInTheDocument();
+
+		const widthInput = page.getByRole('spinbutton', { name: /width \(in\)/i });
+		const undoButton = page.getByRole('button', { name: 'Undo', exact: true });
+		const redoButton = page.getByRole('button', { name: 'Redo', exact: true });
+		await expect.element(widthInput).toHaveValue(4);
+
+		await widthInput.click();
+		await userEvent.keyboard('{Control>}a{/Control}5');
+		await page.getByText('🏷️ ZPL Editor', { exact: true }).click();
+
+		await expect.element(widthInput).toHaveValue(5);
+
+		await undoButton.click();
+
+		await expect.element(widthInput).toHaveValue(4);
+
+		await redoButton.click();
+
+		await expect.element(widthInput).toHaveValue(5);
+	});
 });

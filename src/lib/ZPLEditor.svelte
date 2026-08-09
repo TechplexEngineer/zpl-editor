@@ -35,6 +35,31 @@
 	let activeObject = $state<any>(null);
 	let forceRender = $state(0);
 	let copiedNotification = $state(false);
+	let historyStack = $state<EditorSnapshot[]>([]);
+	let historyIndex = $state(-1);
+	let isRestoringHistory = $state(false);
+	let hasInitializedHistory = false;
+	let suppressHistory = false;
+	let nextHistoryId = 0;
+	let lastLabelConfig = `${width}:${height}:${dpi}`;
+
+	type EditorSnapshot = {
+		width: number;
+		height: number;
+		dpi: number;
+		activeObjectId: string | null;
+		canvas: ReturnType<fabric.Canvas['toJSON']>;
+	};
+
+	const HISTORY_LIMIT = 100;
+	const SERIALIZATION_PROPS = [
+		'zplType',
+		'zplRounding',
+		'zplData',
+		'barcodeFormat',
+		'zplGFData',
+		'historyId'
+	];
 
 	// Calculated label dot dimensions
 	let pwDots = $derived(inchesToDots(width, dpi));
@@ -45,10 +70,16 @@
 		const w = pwDots;
 		const h = llDots;
 		if (fabricCanvas) {
-			fabricCanvas.setDimensions({ width: w, height: h });
-			fabricCanvas.calcOffset();
-			fabricCanvas.renderAll();
+			const nextLabelConfig = `${width}:${height}:${dpi}`;
+			if (nextLabelConfig === lastLabelConfig) {
+				return;
+			}
+			lastLabelConfig = nextLabelConfig;
+			syncCanvasDimensions(w, h);
 			updateZPL();
+			if (hasInitializedHistory && !suppressHistory) {
+				pushHistorySnapshot();
+			}
 		}
 	});
 
@@ -91,9 +122,20 @@
 				centerLine(obj as fabric.Line);
 			}
 			updateZPL();
+			pushHistorySnapshot();
 		});
-		fabricCanvas.on('object:added', updateZPL);
+		fabricCanvas.on('object:added', (e) => {
+			if (e.target) {
+				ensureHistoryId(e.target);
+			}
+			updateZPL();
+			pushHistorySnapshot();
+		});
 		fabricCanvas.on('object:removed', updateZPL);
+		fabricCanvas.on('text:changed', () => {
+			updateZPL();
+			pushHistorySnapshot();
+		});
 		fabricCanvas.on('object:scaling', (e) => {
 			const obj = e.target;
 			if (obj && (obj as any).zplType === 'rectangle') {
@@ -117,8 +159,7 @@
 		});
 
 		// Add default sample elements
-		addText('Sample Label', 100, 100, 48);
-		addBarcode('https://example.com', 100, 200, 'QR');
+		void initializeHistoryState();
 
 		return () => {
 			fabricCanvas?.dispose();
@@ -127,6 +168,186 @@
 
 	function handleSelection(e: any) {
 		activeObject = fabricCanvas?.getActiveObject() || null;
+	}
+
+	function syncCanvasDimensions(w = pwDots, h = llDots) {
+		if (!fabricCanvas) return;
+		fabricCanvas.setDimensions({ width: w, height: h });
+		fabricCanvas.calcOffset();
+		fabricCanvas.renderAll();
+	}
+
+	function applyLabelSettings(nextWidth = width, nextHeight = height, nextDpi = dpi) {
+		if (!Number.isFinite(nextWidth) || !Number.isFinite(nextHeight) || !Number.isFinite(nextDpi)) {
+			return;
+		}
+		width = nextWidth;
+		height = nextHeight;
+		dpi = nextDpi;
+		lastLabelConfig = `${width}:${height}:${dpi}`;
+		syncCanvasDimensions(inchesToDots(width, dpi), inchesToDots(height, dpi));
+		updateZPL();
+		if (hasInitializedHistory && !suppressHistory) {
+			pushHistorySnapshot();
+		}
+	}
+
+	function ensureHistoryId(obj: fabric.Object) {
+		if (!(obj as any).historyId) {
+			(obj as any).historyId = `obj-${nextHistoryId++}`;
+		}
+	}
+
+	function buildSnapshot(): EditorSnapshot | null {
+		if (!fabricCanvas) return null;
+
+		const currentActiveObject = fabricCanvas.getActiveObject();
+		if (currentActiveObject) {
+			ensureHistoryId(currentActiveObject);
+		}
+
+		return {
+			width,
+			height,
+			dpi,
+			activeObjectId: ((currentActiveObject as any)?.historyId as string | undefined) ?? null,
+			canvas: fabricCanvas.toJSON(SERIALIZATION_PROPS)
+		};
+	}
+
+	function pushHistorySnapshot({ reset = false }: { reset?: boolean } = {}) {
+		if (!fabricCanvas || suppressHistory) return;
+
+		const snapshot = buildSnapshot();
+		if (!snapshot) return;
+
+		const serializedSnapshot = JSON.stringify(snapshot);
+		const currentSnapshot = historyStack[historyIndex];
+		if (!reset && currentSnapshot && JSON.stringify(currentSnapshot) === serializedSnapshot) {
+			return;
+		}
+
+		if (reset) {
+			historyStack = [snapshot];
+			historyIndex = 0;
+			hasInitializedHistory = true;
+			return;
+		}
+
+		const nextHistory = [...historyStack.slice(0, historyIndex + 1), snapshot];
+		if (nextHistory.length > HISTORY_LIMIT) {
+			nextHistory.splice(0, nextHistory.length - HISTORY_LIMIT);
+		}
+
+		historyStack = nextHistory;
+		historyIndex = historyStack.length - 1;
+	}
+
+	function rehydrateCanvasObjects() {
+		if (!fabricCanvas) return;
+
+		for (const obj of fabricCanvas.getObjects()) {
+			ensureHistoryId(obj);
+
+			if ((obj as any).zplType === 'line') {
+				const line = obj as fabric.Line;
+				line.controls = lineControls;
+				line.set({
+					lockRotation: true,
+					hasRotatingPoint: false,
+					hasBorders: false,
+					strokeUniform: true
+				});
+			}
+
+			if ((obj as any).zplType === 'barcode') {
+				const image = obj as fabric.Image;
+				image.set({ lockUniScaling: true });
+				image.setControlsVisibility({
+					mt: false,
+					mb: false,
+					ml: false,
+					mr: false
+				});
+			}
+		}
+	}
+
+	function restoreActiveObject(activeObjectId: string | null) {
+		if (!fabricCanvas || !activeObjectId) {
+			fabricCanvas?.discardActiveObject();
+			activeObject = null;
+			return;
+		}
+
+		const restoredObject = fabricCanvas
+			.getObjects()
+			.find((obj) => (obj as any).historyId === activeObjectId);
+
+		if (restoredObject) {
+			fabricCanvas.setActiveObject(restoredObject);
+			activeObject = restoredObject;
+			return;
+		}
+
+		fabricCanvas.discardActiveObject();
+		activeObject = null;
+	}
+
+	async function restoreHistorySnapshot(targetIndex: number) {
+		if (!fabricCanvas || targetIndex < 0 || targetIndex >= historyStack.length || isRestoringHistory) {
+			return;
+		}
+
+		const snapshot = historyStack[targetIndex];
+		const canvas = fabricCanvas;
+		historyIndex = targetIndex;
+		isRestoringHistory = true;
+		suppressHistory = true;
+
+		width = snapshot.width;
+		height = snapshot.height;
+		dpi = snapshot.dpi;
+		lastLabelConfig = `${snapshot.width}:${snapshot.height}:${snapshot.dpi}`;
+
+		try {
+			syncCanvasDimensions(
+				inchesToDots(snapshot.width, snapshot.dpi),
+				inchesToDots(snapshot.height, snapshot.dpi)
+			);
+
+			await new Promise<void>((resolve) => {
+				canvas.loadFromJSON(snapshot.canvas, () => {
+					rehydrateCanvasObjects();
+					restoreActiveObject(snapshot.activeObjectId);
+					canvas.calcOffset();
+					canvas.requestRenderAll();
+					updateZPL();
+					resolve();
+				});
+			});
+		} finally {
+			suppressHistory = false;
+			isRestoringHistory = false;
+		}
+	}
+
+	async function undo() {
+		if (historyIndex <= 0) return;
+		await restoreHistorySnapshot(historyIndex - 1);
+	}
+
+	async function redo() {
+		if (historyIndex >= historyStack.length - 1) return;
+		await restoreHistorySnapshot(historyIndex + 1);
+	}
+
+	async function initializeHistoryState() {
+		suppressHistory = true;
+		addText('Sample Label', 100, 100, 48);
+		await addBarcode('https://example.com', 100, 200, 'QR');
+		suppressHistory = false;
+		pushHistorySnapshot({ reset: true });
 	}
 
 	function updateZPL() {
@@ -143,6 +364,12 @@
 		forceRender++;
 	}
 
+	function commitCanvasChanges() {
+		fabricCanvas?.renderAll();
+		updateZPL();
+		pushHistorySnapshot();
+	}
+
 	function addText(content = 'Text', x = 50, y = 50, size = 36) {
 		if (!fabricCanvas) return;
 		const textObj = new fabric.Textbox(content, {
@@ -154,6 +381,7 @@
 			snapAngle: 90
 		});
 		(textObj as any).zplType = 'text';
+		ensureHistoryId(textObj);
 		fabricCanvas.add(textObj);
 		fabricCanvas.setActiveObject(textObj);
 	}
@@ -174,6 +402,7 @@
 		});
 		(rectObj as any).zplType = 'rectangle';
 		(rectObj as any).zplRounding = 0;
+		ensureHistoryId(rectObj);
 		fabricCanvas.add(rectObj);
 		fabricCanvas.setActiveObject(rectObj);
 	}
@@ -192,6 +421,7 @@
 			snapAngle: 90
 		});
 		(circleObj as any).zplType = 'circle';
+		ensureHistoryId(circleObj);
 		fabricCanvas.add(circleObj);
 		fabricCanvas.setActiveObject(circleObj);
 	}
@@ -411,6 +641,7 @@
 			height: 1
 		});
 		(lineObj as any).zplType = 'line';
+		ensureHistoryId(lineObj);
 		lineObj.controls = lineControls;
 		fabricCanvas.add(lineObj);
 		fabricCanvas.setActiveObject(lineObj);
@@ -436,8 +667,7 @@
 		
 		activeObject.dirty = true;
 		activeObject.setCoords();
-		fabricCanvas?.renderAll();
-		updateZPL();
+		commitCanvasChanges();
 	}
 
 	function updateRectangleProp(key: 'width' | 'height', val: number) {
@@ -460,8 +690,7 @@
 		});
 
 		activeObject.setCoords();
-		fabricCanvas?.renderAll();
-		updateZPL();
+		commitCanvasChanges();
 	}
 
 	function updateRectangleRounding(rounding: number) {
@@ -477,34 +706,37 @@
 			ry: rx / (activeObject.scaleY || 1)
 		});
 
-		fabricCanvas?.renderAll();
-		updateZPL();
+		commitCanvasChanges();
 	}
 
 	async function addBarcode(text = 'BARCODE', x = 50, y = 50, format: BarcodeFormat = 'QR') {
 		if (!fabricCanvas) return;
 		const dataUrl = await renderBarcodeDataUrl(text, format);
 
-		fabric.Image.fromURL(dataUrl, (img) => {
-			img.set({
-				left: x,
-				top: y,
-				snapAngle: 90,
-				lockUniScaling: true
-			});
-			img.setControlsVisibility({
-				mt: false,
-				mb: false,
-				ml: false,
-				mr: false
-			});
-			(img as any).zplType = 'barcode';
-			(img as any).zplData = text;
-			(img as any).barcodeFormat = format;
+		await new Promise<void>((resolve) => {
+			fabric.Image.fromURL(dataUrl, (img) => {
+				img.set({
+					left: x,
+					top: y,
+					snapAngle: 90,
+					lockUniScaling: true
+				});
+				img.setControlsVisibility({
+					mt: false,
+					mb: false,
+					ml: false,
+					mr: false
+				});
+				(img as any).zplType = 'barcode';
+				(img as any).zplData = text;
+				(img as any).barcodeFormat = format;
+				ensureHistoryId(img);
 
-			fabricCanvas?.add(img);
-			fabricCanvas?.setActiveObject(img);
-			updateZPL();
+				fabricCanvas?.add(img);
+				fabricCanvas?.setActiveObject(img);
+				updateZPL();
+				resolve();
+			});
 		});
 	}
 
@@ -537,6 +769,7 @@
 					});
 					(fImg as any).zplType = 'image';
 					(fImg as any).zplGFData = gfHex;
+					ensureHistoryId(fImg);
 
 					fabricCanvas?.add(fImg);
 					fabricCanvas?.setActiveObject(fImg);
@@ -550,10 +783,13 @@
 
 	function deleteSelected() {
 		if (!fabricCanvas || !activeObject) return;
+		suppressHistory = true;
 		fabricCanvas.remove(activeObject);
 		fabricCanvas.discardActiveObject();
 		activeObject = null;
+		suppressHistory = false;
 		updateZPL();
+		pushHistorySnapshot();
 	}
 
 	function copyZPL() {
@@ -578,9 +814,7 @@
 	}
 
 	function applyPreset(w: number, h: number, presetDpi: number) {
-		width = w;
-		height = h;
-		dpi = presetDpi;
+		applyLabelSettings(w, h, presetDpi);
 	}
 
 	// Active Object Property Handlers
@@ -590,8 +824,7 @@
 		// Force Svelte 5 reactivity proxy to register the update
 		activeObject[key] = value;
 		activeObject.setCoords();
-		fabricCanvas.renderAll();
-		updateZPL();
+		commitCanvasChanges();
 	}
 
 	async function updateBarcodeFormat(newFormat: BarcodeFormat) {
@@ -600,8 +833,7 @@
 		const text = (activeObject as any).zplData || 'BARCODE';
 		const newDataUrl = await renderBarcodeDataUrl(text, newFormat);
 		activeObject.setSrc(newDataUrl, () => {
-			fabricCanvas?.renderAll();
-			updateZPL();
+			commitCanvasChanges();
 		});
 	}
 
@@ -611,14 +843,11 @@
 		const format = (activeObject as any).barcodeFormat || 'QR';
 		const newDataUrl = await renderBarcodeDataUrl(newText, format);
 		activeObject.setSrc(newDataUrl, () => {
-			fabricCanvas?.renderAll();
-			updateZPL();
+			commitCanvasChanges();
 		});
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
-		if (!fabricCanvas || !activeObject) return;
-
 		// Guard: Ignore if user is typing in an input/textarea/select element on the page
 		const activeEl = document.activeElement;
 		if (activeEl) {
@@ -633,6 +862,24 @@
 				return;
 			}
 		}
+
+		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+			e.preventDefault();
+			if (e.shiftKey) {
+				void redo();
+			} else {
+				void undo();
+			}
+			return;
+		}
+
+		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+			e.preventDefault();
+			void redo();
+			return;
+		}
+
+		if (!fabricCanvas || !activeObject) return;
 
 		// Guard: Ignore if active fabric object is in text-editing mode
 		if (activeObject.isEditing) {
@@ -658,17 +905,31 @@
 		<div class="toolbar-controls">
 			<label class="control-group">
 				<span>Width (in):</span>
-				<input type="number" step="0.25" min="0.5" max="12" bind:value={width} />
+				<input
+					type="number"
+					step="0.25"
+					min="0.5"
+					max="12"
+					value={width}
+					onchange={(e) => applyLabelSettings(parseFloat(e.currentTarget.value), height, dpi)}
+				/>
 			</label>
 
 			<label class="control-group">
 				<span>Height (in):</span>
-				<input type="number" step="0.25" min="0.5" max="12" bind:value={height} />
+				<input
+					type="number"
+					step="0.25"
+					min="0.5"
+					max="12"
+					value={height}
+					onchange={(e) => applyLabelSettings(width, parseFloat(e.currentTarget.value), dpi)}
+				/>
 			</label>
 
 			<label class="control-group">
 				<span>DPI:</span>
-				<select bind:value={dpi}>
+				<select value={dpi} onchange={(e) => applyLabelSettings(width, height, parseInt(e.currentTarget.value))}>
 					<option value={200}>200 DPI</option>
 					<option value={300}>300 DPI (Default)</option>
 					<option value={600}>600 DPI</option>
@@ -683,6 +944,22 @@
 		</div>
 
 		<div class="toolbar-actions">
+			<button
+				class="btn btn-secondary"
+				onclick={() => void undo()}
+				disabled={historyIndex <= 0 || isRestoringHistory}
+				title="Undo (Ctrl/Cmd+Z)"
+			>
+				Undo
+			</button>
+			<button
+				class="btn btn-secondary"
+				onclick={() => void redo()}
+				disabled={historyIndex >= historyStack.length - 1 || isRestoringHistory}
+				title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)"
+			>
+				Redo
+			</button>
 			<button class="btn btn-secondary" onclick={downloadZPL}>
 				Download ZPL
 			</button>
@@ -828,15 +1105,14 @@
 									const w = parseFloat(e.currentTarget.value);
 									activeObject.set('width', w / (activeObject.scaleX || 1));
 									activeObject.setCoords();
-									fabricCanvas?.renderAll();
-									updateZPL();
+									commitCanvasChanges();
 								}}
 							/>
 						</label>
 					</div>
 
-					<div class="prop-field">
-						<label><span>Alignment (ZPL FB Block):</span></label>
+					<fieldset class="prop-field align-fieldset">
+						<legend>Alignment (ZPL FB Block):</legend>
 						<div class="align-group">
 							<button class="align-btn" class:active={forceRender > -1 && (!activeObject.textAlign || activeObject.textAlign === 'left')} onclick={() => updateActiveProp('textAlign', 'left')} title="Left">
 								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h8v2H2V7zm0 4h12v2H2v-2z"/></svg>
@@ -851,7 +1127,7 @@
 								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h12v2H2v-2z"/></svg>
 							</button>
 						</div>
-					</div>
+					</fieldset>
 				{/if}
 
 				{#if activeObject.zplType === 'barcode'}
@@ -938,8 +1214,7 @@
 										scaleY: 1
 									});
 									activeObject.setCoords();
-									fabricCanvas?.renderAll();
-									updateZPL();
+									commitCanvasChanges();
 								}}
 							/>
 						</label>
@@ -1234,6 +1509,20 @@
 		width: 100%;
 	}
 
+	.align-fieldset {
+		border: 0;
+		margin: 0;
+		padding: 0;
+		min-inline-size: 0;
+	}
+
+	.align-fieldset legend {
+		padding: 0;
+		margin-bottom: 0.3rem;
+		color: inherit;
+		font-size: inherit;
+	}
+
 	.btn {
 		padding: 0.4rem 0.8rem;
 		border-radius: 0.375rem;
@@ -1242,6 +1531,11 @@
 		font-weight: 600;
 		font-size: 0.85rem;
 		transition: background 0.15s ease;
+	}
+
+	.btn:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
 	}
 
 	.toolbar-actions {
