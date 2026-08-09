@@ -114,4 +114,31 @@ describe('ZPLEditor Barcode Scaling Restriction', () => {
 		expect(rectObj.width! * rectObj.scaleX!).toBe(146);
 		expect(rectObj.height! * rectObj.scaleY!).toBe(106);
 	});
+
+	it('uses CG Triumvirate as default fontFamily for text objects', async () => {
+		let addedTextObj: fabric.IText | null = null;
+		const originalAdd = fabric.Canvas.prototype.add;
+		const spy = vi.spyOn(fabric.Canvas.prototype, 'add').mockImplementation(function (
+			this: any,
+			...args: any[]
+		) {
+			const obj = args[0];
+			if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+				addedTextObj = obj as fabric.IText;
+			}
+			return originalAdd.apply(this, args);
+		});
+
+		render(ZPLEditor);
+		await tick();
+
+		spy.mockRestore();
+
+		expect(addedTextObj).not.toBeNull();
+		if (addedTextObj) {
+			expect((addedTextObj as fabric.IText).fontFamily).toBe(
+				'CG Triumvirate, Helvetica, Arial, sans-serif'
+			);
+		}
+	});
 });

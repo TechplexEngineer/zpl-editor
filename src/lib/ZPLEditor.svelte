@@ -165,7 +165,7 @@
 			left: x,
 			top: y,
 			fontSize: size,
-			fontFamily: 'Helvetica, Arial, sans-serif',
+			fontFamily: 'CG Triumvirate, Helvetica, Arial, sans-serif',
 			fill: '#000000',
 			snapAngle: 90
 		});
@@ -983,6 +983,14 @@
 </div>
 
 <style>
+	@font-face {
+		font-family: 'CG Triumvirate';
+		src: url('/triumvirate-cg-comp/triumviratecgcomp.otf') format('opentype');
+		font-weight: normal;
+		font-style: normal;
+		font-display: swap;
+	}
+
 	:global(*) {
 		box-sizing: border-box;
 	}
