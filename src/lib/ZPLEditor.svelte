@@ -161,6 +161,7 @@
 			stroke: '#000000',
 			strokeWidth: 4,
 			strokeUniform: true,
+			noScaleCache: false,
 			snapAngle: 90
 		});
 		(rectObj as any).zplType = 'rectangle';
@@ -179,7 +180,7 @@
 			stroke: '#000000',
 			strokeWidth: 4,
 			strokeUniform: true,
-			lockUniScaling: true,
+			noScaleCache: false,
 			snapAngle: 90
 		});
 		(circleObj as any).zplType = 'circle';
