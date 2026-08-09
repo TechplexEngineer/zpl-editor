@@ -10,6 +10,8 @@
 	import { compileFabricCanvasToZPL } from './zpl/zplCompiler.js';
 	import { renderBarcodeDataUrl } from './zpl/barcodeRenderer.js';
 	import { rgbaToZplGF } from './zpl/imageDither.js';
+	import { parseZPL } from './zpl/zplParser.js';
+	import type { ParsedBarcode, ParsedCircle, ParsedEllipse, ParsedLine, ParsedRectangle, ParsedText } from './zpl/zplParser.js';
 
 	// Props with Svelte 5 bindable syntax
 	let {
@@ -35,6 +37,10 @@
 	let activeObject = $state<any>(null);
 	let forceRender = $state(0);
 	let copiedNotification = $state(false);
+	let showImportModal = $state(false);
+	let importZplText = $state('');
+	let importWarnings = $state<string[]>([]);
+	let showImportWarnings = $state(false);
 
 	// Calculated label dot dimensions
 	let pwDots = $derived(inchesToDots(width, dpi));
@@ -616,6 +622,191 @@
 		});
 	}
 
+	// ---------------------------------------------------------------------------
+	// Import ZPL
+	// ---------------------------------------------------------------------------
+
+	function addParsedText(el: ParsedText) {
+		if (!fabricCanvas) return;
+		const textObj = new fabric.Textbox(el.text, {
+			left: el.x,
+			top: el.y,
+			fontSize: el.fontHeight,
+			fontFamily: 'Helvetica, Arial, sans-serif',
+			fill: '#000000',
+			snapAngle: 90,
+			angle: el.angle,
+			textAlign: el.textAlign as any,
+			width: el.blockWidth !== null ? el.blockWidth : undefined
+		});
+		(textObj as any).zplType = 'text';
+		fabricCanvas.add(textObj);
+	}
+
+	function addParsedRectangle(el: ParsedRectangle) {
+		if (!fabricCanvas) return;
+		const roundingVal = Math.max(0, Math.min(8, el.rounding));
+		const rx = (roundingVal / 8) * (Math.min(el.width, el.height) / 2);
+		const rectObj = new fabric.Rect({
+			left: el.x,
+			top: el.y,
+			width: el.width,
+			height: el.height,
+			fill: 'transparent',
+			stroke: '#000000',
+			strokeWidth: el.thickness,
+			strokeUniform: true,
+			noScaleCache: false,
+			snapAngle: 90,
+			rx,
+			ry: rx
+		});
+		(rectObj as any).zplType = 'rectangle';
+		(rectObj as any).zplRounding = roundingVal;
+		fabricCanvas.add(rectObj);
+	}
+
+	function addParsedCircle(el: ParsedCircle) {
+		if (!fabricCanvas) return;
+		const r = el.diameter / 2;
+		const circleObj = new fabric.Circle({
+			left: el.x,
+			top: el.y,
+			radius: r,
+			fill: 'transparent',
+			stroke: '#000000',
+			strokeWidth: el.thickness,
+			strokeUniform: true,
+			noScaleCache: false,
+			snapAngle: 90
+		});
+		(circleObj as any).zplType = 'circle';
+		fabricCanvas.add(circleObj);
+	}
+
+	function addParsedEllipse(el: ParsedEllipse) {
+		if (!fabricCanvas) return;
+		// Fabric uses Circle with non-uniform scale to represent ellipses
+		const r = el.width / 2;
+		const scaleY = el.height / el.width;
+		const ellipseObj = new fabric.Circle({
+			left: el.x,
+			top: el.y,
+			radius: r,
+			scaleY,
+			fill: 'transparent',
+			stroke: '#000000',
+			strokeWidth: el.thickness,
+			strokeUniform: true,
+			noScaleCache: false,
+			snapAngle: 90
+		});
+		(ellipseObj as any).zplType = 'ellipse';
+		fabricCanvas.add(ellipseObj);
+	}
+
+	function addParsedLine(el: ParsedLine) {
+		if (!fabricCanvas) return;
+		// Diagonal lines use ^GD<w>,<h>,<t>,<color>,<orient>
+		// orientation L = top-left to bottom-right, R = bottom-left to top-right
+		const dx = el.width;
+		const dy = el.orientation === 'R' ? -el.height : el.height;
+		const length = Math.sqrt(dx * dx + dy * dy) || 1;
+		const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+		const centerX = el.x + el.width / 2;
+		const centerY = el.y + el.height / 2;
+
+		const lineObj = new fabric.Line([-length / 2, 0, length / 2, 0], {
+			left: centerX,
+			top: centerY,
+			originX: 'center',
+			originY: 'center',
+			stroke: '#000000',
+			strokeWidth: el.thickness,
+			strokeUniform: true,
+			hasRotatingPoint: false,
+			lockRotation: true,
+			hasBorders: false,
+			angle,
+			width: length,
+			height: 1
+		});
+		(lineObj as any).zplType = 'line';
+		lineObj.controls = lineControls;
+		fabricCanvas.add(lineObj);
+	}
+
+	async function addParsedBarcode(el: ParsedBarcode) {
+		if (!fabricCanvas) return;
+		const dataUrl = await renderBarcodeDataUrl(el.data, el.format);
+		await new Promise<void>((resolve) => {
+			fabric.Image.fromURL(dataUrl, (img) => {
+				img.set({
+					left: el.x,
+					top: el.y,
+					snapAngle: 90,
+					lockUniScaling: true,
+					angle: el.angle
+				});
+				img.setControlsVisibility({ mt: false, mb: false, ml: false, mr: false });
+				(img as any).zplType = 'barcode';
+				(img as any).zplData = el.data;
+				(img as any).barcodeFormat = el.format;
+				fabricCanvas?.add(img);
+				resolve();
+			});
+		});
+	}
+
+	async function runImport() {
+		if (!fabricCanvas || !importZplText.trim()) return;
+
+		const parsed = parseZPL(importZplText);
+
+		// Update label dimensions if encoded in the ZPL
+		if (parsed.widthDots !== null) {
+			width = dotsToInches(parsed.widthDots, dpi);
+		}
+		if (parsed.heightDots !== null) {
+			height = dotsToInches(parsed.heightDots, dpi);
+		}
+
+		// Clear the canvas
+		fabricCanvas.clear();
+		fabricCanvas.backgroundColor = '#ffffff';
+
+		// Add all parsed elements
+		for (const el of parsed.elements) {
+			if (el.type === 'text') addParsedText(el);
+			else if (el.type === 'rectangle') addParsedRectangle(el);
+			else if (el.type === 'circle') addParsedCircle(el);
+			else if (el.type === 'ellipse') addParsedEllipse(el);
+			else if (el.type === 'line') addParsedLine(el);
+			else if (el.type === 'barcode') await addParsedBarcode(el);
+		}
+
+		fabricCanvas.discardActiveObject();
+		fabricCanvas.renderAll();
+		updateZPL();
+
+		importWarnings = parsed.unsupportedCommands;
+		showImportWarnings = importWarnings.length > 0;
+
+		if (!showImportWarnings) {
+			// No warnings — close the modal immediately
+			showImportModal = false;
+			importZplText = '';
+		}
+		// If there are warnings, stay open so the user can read them, then close
+	}
+
+	function closeImportModal() {
+		showImportModal = false;
+		importZplText = '';
+		importWarnings = [];
+		showImportWarnings = false;
+	}
+
 	function handleKeyDown(e: KeyboardEvent) {
 		if (!fabricCanvas || !activeObject) return;
 
@@ -683,6 +874,9 @@
 		</div>
 
 		<div class="toolbar-actions">
+			<button class="btn btn-secondary" onclick={() => (showImportModal = true)}>
+				Import ZPL
+			</button>
 			<button class="btn btn-secondary" onclick={downloadZPL}>
 				Download ZPL
 			</button>
@@ -1032,6 +1226,54 @@
 			{/if}
 		</aside>
 	</div>
+
+	<!-- IMPORT ZPL MODAL -->
+	{#if showImportModal}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="modal-overlay" role="presentation" onclick={closeImportModal}>
+			<div
+				class="modal"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Import ZPL"
+				tabindex="-1"
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.stopPropagation()}
+			>
+				<h3>Import ZPL</h3>
+				<p class="modal-hint">Paste your ZPL label code below. Supported elements will be loaded onto the canvas; unsupported commands will be listed as warnings.</p>
+
+				{#if showImportWarnings}
+					<div class="import-warnings">
+						<strong>⚠️ Unsupported commands were ignored:</strong>
+						<ul>
+							{#each importWarnings as w}
+								<li><code>{w}</code></li>
+							{/each}
+						</ul>
+						<p class="warning-note">All supported elements have been imported. You can close this dialog to continue editing.</p>
+					</div>
+				{/if}
+
+				{#if !showImportWarnings}
+					<textarea
+						class="import-textarea"
+						placeholder="^XA&#10;^PW609&#10;^LL914&#10;...&#10;^XZ"
+						bind:value={importZplText}
+					></textarea>
+				{/if}
+
+				<div class="modal-actions">
+					{#if showImportWarnings}
+						<button class="btn btn-secondary" onclick={closeImportModal}>Close</button>
+					{:else}
+						<button class="btn btn-accent" onclick={runImport} disabled={!importZplText.trim()}>Import</button>
+						<button class="btn btn-secondary" onclick={closeImportModal}>Cancel</button>
+					{/if}
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -1382,5 +1624,96 @@
 		color: #ffffff;
 		border-color: #3b82f6;
 		font-weight: 600;
+	}
+
+	/* --- Import Modal -------------------------------------------------------- */
+
+	.modal-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.7);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 9999;
+	}
+
+	.modal {
+		background: #1e293b;
+		border: 1px solid #334155;
+		border-radius: 0.75rem;
+		padding: 1.5rem;
+		width: 90%;
+		max-width: 600px;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		color: #f8fafc;
+	}
+
+	.modal h3 {
+		margin: 0;
+		font-size: 1.1rem;
+		font-weight: 600;
+	}
+
+	.modal-hint {
+		margin: 0;
+		font-size: 0.85rem;
+		color: #94a3b8;
+	}
+
+	.import-textarea {
+		width: 100%;
+		height: 220px;
+		background: #0f172a;
+		border: 1px solid #334155;
+		border-radius: 0.5rem;
+		color: #f8fafc;
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 0.8rem;
+		padding: 0.75rem;
+		resize: vertical;
+	}
+
+	.import-textarea:focus {
+		outline: none;
+		border-color: #3b82f6;
+	}
+
+	.import-warnings {
+		background: #292112;
+		border: 1px solid #92400e;
+		border-radius: 0.5rem;
+		padding: 0.75rem 1rem;
+		font-size: 0.85rem;
+	}
+
+	.import-warnings ul {
+		margin: 0.5rem 0;
+		padding-left: 1.5rem;
+	}
+
+	.import-warnings li {
+		margin: 0.2rem 0;
+	}
+
+	.import-warnings code {
+		background: #1e293b;
+		padding: 0.1rem 0.3rem;
+		border-radius: 0.25rem;
+		font-size: 0.8rem;
+	}
+
+	.warning-note {
+		margin: 0.5rem 0 0;
+		color: #94a3b8;
+		font-size: 0.8rem;
+	}
+
+	.modal-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
 	}
 </style>
