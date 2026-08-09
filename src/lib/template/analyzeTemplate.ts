@@ -134,11 +134,25 @@ function classifyField(commands: string): PlaceholderContext | undefined {
 		.map(classifyFieldCommand)
 		.filter((context): context is PlaceholderContext | 'unsupported' => context !== undefined);
 
-	if (fieldCommands.length !== 1 || fieldCommands[0] === 'unsupported') {
+	if (fieldCommands.length === 0 || fieldCommands.includes('unsupported')) {
 		return undefined;
 	}
 
-	return fieldCommands[0];
+	const contexts = fieldCommands as PlaceholderContext[];
+	const first = contexts[0];
+	if (!first || contexts.some((context) => !sameContext(context, first))) {
+		return undefined;
+	}
+
+	return first;
+}
+
+function sameContext(left: PlaceholderContext, right: PlaceholderContext): boolean {
+	return (
+		left.kind === right.kind &&
+		(left.kind !== 'barcode' ||
+			(right.kind === 'barcode' && left.format === right.format))
+	);
 }
 
 function classifyFieldCommand(command: string): PlaceholderContext | 'unsupported' | undefined {

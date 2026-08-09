@@ -150,4 +150,45 @@ describe('ZPL Compiler Utility Functions', () => {
 		expect(zpl).toContain('^FO40,50^GD150,100,4,B,R^FS');
 		expect(zpl).toContain('^FO50,50^GB200,100,4,B,6^FS');
 	});
+
+	it('preserves named tokens in text and barcode field data', () => {
+		const canvas = {
+			getObjects: () => [
+				{
+					type: 'textbox',
+					zplType: 'text',
+					text: 'SKU {{sku}}',
+					left: 1,
+					top: 2,
+					fontSize: 20,
+					width: 100,
+					scaleX: 1,
+					scaleY: 1,
+					angle: 0
+				},
+				{
+					type: 'image',
+					zplType: 'barcode',
+					zplData: '{{sku}}-{{lot}}',
+					barcodeFormat: 'CODE128',
+					left: 1,
+					top: 30,
+					width: 100,
+					height: 40,
+					scaleX: 1,
+					scaleY: 1,
+					angle: 0
+				}
+			]
+		} as any;
+
+		const zpl = compileFabricCanvasToZPL(canvas, {
+			widthInches: 2,
+			heightInches: 1,
+			dpi: 300
+		});
+
+		expect(zpl).toContain('^FDSKU {{sku}}^FS');
+		expect(zpl).toContain('^FD{{sku}}-{{lot}}^FS');
+	});
 });

@@ -10,6 +10,13 @@
 	import { compileFabricCanvasToZPL } from './zpl/zplCompiler.js';
 	import { renderBarcodeDataUrl } from './zpl/barcodeRenderer.js';
 	import { rgbaToZplGF } from './zpl/imageDither.js';
+	import { analyzeTemplate } from './template/analyzeTemplate.js';
+	import {
+		insertPlaceholder,
+		placeholderPreviewText,
+		placeholderStyleRanges
+	} from './template/placeholderPreview.js';
+	import type { TemplateAnalysis } from './template/types.js';
 
 	// Props with Svelte 5 bindable syntax
 	let {
@@ -18,7 +25,8 @@
 		dpi = $bindable(300),
 		zpl = $bindable(''),
 		visible = true,
-		onChange = (zplString: string) => {}
+		onChange = (zplString: string) => {},
+		onTemplateAnalysis = (_analysis: TemplateAnalysis) => {}
 	} = $props<{
 		width?: number;
 		height?: number;
@@ -26,6 +34,7 @@
 		zpl?: string;
 		visible?: boolean;
 		onChange?: (zplString: string) => void;
+		onTemplateAnalysis?: (analysis: TemplateAnalysis) => void;
 	}>();
 
 	// Local reactive states
@@ -35,6 +44,15 @@
 	let activeObject = $state<any>(null);
 	let forceRender = $state(0);
 	let copiedNotification = $state(false);
+	let placeholderName = $state('');
+	let placeholderError = $state('');
+	let textContentInput = $state<HTMLInputElement>();
+	let barcodeValueInput = $state<HTMLInputElement>();
+	let templateAnalysis = $state<TemplateAnalysis>({
+		placeholders: [],
+		occurrences: [],
+		diagnostics: []
+	});
 
 	// Calculated label dot dimensions
 	let pwDots = $derived(inchesToDots(width, dpi));
@@ -127,6 +145,7 @@
 
 	function handleSelection(e: any) {
 		activeObject = fabricCanvas?.getActiveObject() || null;
+		placeholderError = '';
 	}
 
 	function updateZPL() {
@@ -137,7 +156,9 @@
 			dpi
 		});
 		zpl = generated;
+		templateAnalysis = analyzeTemplate(generated);
 		onChange(generated);
+		onTemplateAnalysis(templateAnalysis);
 		// Trigger activeObject property sync
 		activeObject = fabricCanvas.getActiveObject() || null;
 		forceRender++;
@@ -154,6 +175,7 @@
 			snapAngle: 90
 		});
 		(textObj as any).zplType = 'text';
+		applyPlaceholderStyles(textObj);
 		fabricCanvas.add(textObj);
 		fabricCanvas.setActiveObject(textObj);
 	}
@@ -483,7 +505,7 @@
 
 	async function addBarcode(text = 'BARCODE', x = 50, y = 50, format: BarcodeFormat = 'QR') {
 		if (!fabricCanvas) return;
-		const dataUrl = await renderBarcodeDataUrl(text, format);
+		const dataUrl = await renderBarcodeDataUrl(placeholderPreviewText(text), format);
 
 		fabric.Image.fromURL(dataUrl, (img) => {
 			img.set({
@@ -589,6 +611,9 @@
 		activeObject.set(key, value);
 		// Force Svelte 5 reactivity proxy to register the update
 		activeObject[key] = value;
+		if (key === 'text' && isTextObject(activeObject)) {
+			applyPlaceholderStyles(activeObject as fabric.Textbox);
+		}
 		activeObject.setCoords();
 		fabricCanvas.renderAll();
 		updateZPL();
@@ -598,7 +623,7 @@
 		if (!activeObject || (activeObject as any).zplType !== 'barcode') return;
 		(activeObject as any).barcodeFormat = newFormat;
 		const text = (activeObject as any).zplData || 'BARCODE';
-		const newDataUrl = await renderBarcodeDataUrl(text, newFormat);
+		const newDataUrl = await renderBarcodeDataUrl(placeholderPreviewText(text), newFormat);
 		activeObject.setSrc(newDataUrl, () => {
 			fabricCanvas?.renderAll();
 			updateZPL();
@@ -609,11 +634,83 @@
 		if (!activeObject || (activeObject as any).zplType !== 'barcode') return;
 		(activeObject as any).zplData = newText;
 		const format = (activeObject as any).barcodeFormat || 'QR';
-		const newDataUrl = await renderBarcodeDataUrl(newText, format);
+		const newDataUrl = await renderBarcodeDataUrl(placeholderPreviewText(newText), format);
 		activeObject.setSrc(newDataUrl, () => {
 			fabricCanvas?.renderAll();
 			updateZPL();
 		});
+	}
+
+	function isTextObject(object: any): boolean {
+		return (
+			object?.zplType === 'text' ||
+			object?.type === 'i-text' ||
+			object?.type === 'text' ||
+			object?.type === 'textbox'
+		);
+	}
+
+	function applyPlaceholderStyles(textObject: fabric.Textbox) {
+		textObject.styles = {};
+		for (const range of placeholderStyleRanges(textObject.text || '')) {
+			textObject.setSelectionStyles(
+				{ fill: '#1e3a8a', textBackgroundColor: '#dbeafe' },
+				range.start,
+				range.end
+			);
+		}
+		textObject.dirty = true;
+	}
+
+	function barcodePlaceholderNames(source: string): string[] {
+		return placeholderStyleRanges(source).map(({ start, end }) => source.slice(start + 2, end - 2));
+	}
+
+	async function insertIntoActiveContent() {
+		placeholderError = '';
+		if (!activeObject || !fabricCanvas) {
+			placeholderError = 'Select a text or barcode object before inserting a placeholder.';
+			return;
+		}
+
+		const textObject = isTextObject(activeObject);
+		const barcodeObject = activeObject.zplType === 'barcode';
+		if (!textObject && !barcodeObject) {
+			placeholderError = 'Placeholders can only be inserted into text or barcode values.';
+			return;
+		}
+
+		const source = textObject ? activeObject.text || '' : activeObject.zplData || '';
+		const input = textObject ? textContentInput : barcodeValueInput;
+
+		let updated: string;
+		try {
+			updated = insertPlaceholder(
+				source,
+				placeholderName,
+				input?.selectionStart ?? source.length,
+				input?.selectionEnd ?? source.length
+			);
+		} catch (error) {
+			placeholderError = error instanceof Error ? error.message : 'Invalid placeholder name.';
+			return;
+		}
+
+		if (textObject) {
+			activeObject.set('text', updated);
+			activeObject.text = updated;
+			applyPlaceholderStyles(activeObject as fabric.Textbox);
+			activeObject.setCoords();
+			fabricCanvas.renderAll();
+			updateZPL();
+			return;
+		}
+
+		activeObject.zplData = updated;
+		updateZPL();
+		const format = activeObject.barcodeFormat || 'QR';
+		const newDataUrl = await renderBarcodeDataUrl(placeholderPreviewText(updated), format);
+		activeObject.setSrc(newDataUrl, () => fabricCanvas?.renderAll());
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -803,12 +900,18 @@
 						<label>
 							<span>Text Content:</span>
 							<input
+								bind:this={textContentInput}
 								type="text"
 								value={activeObject.text || ''}
 								oninput={(e) => updateActiveProp('text', e.currentTarget.value)}
 							/>
 						</label>
 					</div>
+					<div class="placeholder-control">
+						<input aria-label="Placeholder name" bind:value={placeholderName} placeholder="sku" />
+						<button type="button" onclick={insertIntoActiveContent}>Insert placeholder</button>
+					</div>
+					{#if placeholderError}<p class="field-error" role="alert">{placeholderError}</p>{/if}
 
 					<div class="prop-grid">
 						<label>
@@ -874,11 +977,35 @@
 						<label>
 							<span>Barcode Value:</span>
 							<input
+								bind:this={barcodeValueInput}
 								type="text"
 								value={activeObject.zplData || ''}
 								oninput={(e) => updateBarcodeText(e.currentTarget.value)}
 							/>
 						</label>
+						{#if forceRender > -1 && barcodePlaceholderNames(activeObject.zplData || '').length > 0}
+							<div class="placeholder-chips" aria-label="Barcode placeholders">
+								{#each barcodePlaceholderNames(activeObject.zplData || '') as name}
+									<span class="placeholder-chip">{name}</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
+					<div class="placeholder-control">
+						<input aria-label="Placeholder name" bind:value={placeholderName} placeholder="sku" />
+						<button type="button" onclick={insertIntoActiveContent}>Insert placeholder</button>
+					</div>
+					{#if placeholderError}<p class="field-error" role="alert">{placeholderError}</p>{/if}
+				{/if}
+
+				{#if templateAnalysis.diagnostics.length > 0}
+					<div class="template-diagnostics" aria-label="Template diagnostics">
+						{#each templateAnalysis.diagnostics as diagnostic}
+							<p>
+								Placeholder “{diagnostic.name || 'unknown'}” at {diagnostic.locationId || 'unknown location'}:
+								{diagnostic.message}
+							</p>
+						{/each}
 					</div>
 				{/if}
 
@@ -1232,6 +1359,61 @@
 	.prop-field input,
 	.prop-field select {
 		width: 100%;
+	}
+
+	.placeholder-control {
+		display: flex;
+		gap: 0.4rem;
+	}
+
+	.placeholder-control input {
+		min-width: 0;
+		flex: 1;
+	}
+
+	.placeholder-control button {
+		border: 0;
+		border-radius: 0.375rem;
+		background: #2563eb;
+		color: #fff;
+		padding: 0.35rem 0.55rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.field-error,
+	.template-diagnostics p {
+		margin: 0;
+		color: #fca5a5;
+		font-size: 0.75rem;
+		line-height: 1.35;
+	}
+
+	.template-diagnostics {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		padding: 0.6rem;
+		border: 1px solid #7f1d1d;
+		border-radius: 0.375rem;
+		background: #450a0a;
+	}
+
+	.placeholder-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		margin-top: 0.4rem;
+	}
+
+	.placeholder-chip {
+		border-radius: 999px;
+		background: #dbeafe;
+		color: #1e3a8a;
+		padding: 0.15rem 0.45rem;
+		font-size: 0.7rem;
+		font-weight: 700;
 	}
 
 	.btn {
