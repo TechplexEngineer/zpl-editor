@@ -119,10 +119,18 @@ export function compileFabricCanvasToZPL(canvas: fabric.Canvas, config: LabelCon
 			});
 		} else if (customType === 'circle' || obj.type === 'circle') {
 			const circleObj = obj as fabric.Circle;
-			const r = (circleObj.radius || 50) * (circleObj.scaleX || 1);
-			const diameter = Math.round(r * 2);
+			const radius = circleObj.radius || 50;
+			const scaleX = circleObj.scaleX || 1;
+			const scaleY = circleObj.scaleY || 1;
+			const diameterX = Math.round(radius * 2 * scaleX);
+			const diameterY = Math.round(radius * 2 * scaleY);
 			const t = Math.max(1, Math.round(circleObj.strokeWidth || 2));
-			zpl += `^FO${Math.round(x)},${Math.round(y)}^GC${diameter},${t},B^FS\r\n`;
+			
+			if (diameterX === diameterY) {
+				zpl += `^FO${Math.round(x)},${Math.round(y)}^GC${diameterX},${t},B^FS\r\n`;
+			} else {
+				zpl += `^FO${Math.round(x)},${Math.round(y)}^GE${diameterX},${diameterY},${t},B^FS\r\n`;
+			}
 		} else if (customType === 'diagonalLine' || customType === 'line' || obj.type === 'line') {
 			const lineObj = obj as fabric.Line;
 			const matrix = lineObj.calcTransformMatrix();
