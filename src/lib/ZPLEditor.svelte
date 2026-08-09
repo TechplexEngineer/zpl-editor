@@ -69,7 +69,7 @@
 
 		// Set default snap angle for all objects
 		fabric.Object.prototype.snapAngle = 90;
-		fabric.Object.prototype.snapThreshold = 10;
+		fabric.Object.prototype.snapThreshold = 45;
 
 		// Attach events
 		fabricCanvas.on('selection:created', handleSelection);

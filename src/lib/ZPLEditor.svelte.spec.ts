@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { tick } from 'svelte';
 import ZPLEditor from './ZPLEditor.svelte';
 import { fabric } from 'fabric';
 
@@ -30,4 +31,14 @@ describe('ZPLEditor Barcode Scaling Restriction', () => {
 			})
 		);
 	});
+
+	it('configures fabric.Object.prototype snapAngle to 90 and snapThreshold to 45', async () => {
+		render(ZPLEditor);
+		await tick();
+
+		expect(fabric.Object.prototype.snapAngle).toBe(90);
+		expect(fabric.Object.prototype.snapThreshold).toBe(45);
+	});
 });
+
+
