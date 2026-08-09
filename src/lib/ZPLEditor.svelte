@@ -197,23 +197,47 @@
 				if (!canvas) return false;
 				
 				const pointer = canvas.getPointer(eventData);
-				let p1X = pointer.x - (line.left || 0);
-				let p1Y = pointer.y - (line.top || 0);
-				console.log('p1 dragging: x =', pointer.x, 'y =', pointer.y, 'line.left =', line.left, 'line.top =', line.top, '-> local p1X =', p1X, 'p1Y =', p1Y);
+				const matrix = line.calcTransformMatrix();
+				const p2Abs = fabric.util.transformPoint(
+					new fabric.Point(line.x2 || 0, line.y2 || 0),
+					matrix
+				);
 				
-				// Snap near vertical (same X as line.x2)
-				if (Math.abs(p1X - line.x2!) < 15) {
-					p1X = line.x2!;
+				let p1AbsX = pointer.x;
+				let p1AbsY = pointer.y;
+
+				// Snap near vertical (same X as p2)
+				if (Math.abs(p1AbsX - p2Abs.x) < 15) {
+					p1AbsX = p2Abs.x;
 				}
-				// Snap near horizontal (same Y as line.y2)
-				if (Math.abs(p1Y - line.y2!) < 15) {
-					p1Y = line.y2!;
+				// Snap near horizontal (same Y as p2)
+				if (Math.abs(p1AbsY - p2Abs.y) < 15) {
+					p1AbsY = p2Abs.y;
 				}
+				
+				const minX = Math.min(p1AbsX, p2Abs.x);
+				const minY = Math.min(p1AbsY, p2Abs.y);
+				const maxX = Math.max(p1AbsX, p2Abs.x);
+				const maxY = Math.max(p1AbsY, p2Abs.y);
+				const w = maxX - minX || 1;
+				const h = maxY - minY || 1;
+				
+				const centerX = minX + w / 2;
+				const centerY = minY + h / 2;
 				
 				line.set({
-					x1: p1X,
-					y1: p1Y
+					left: centerX,
+					top: centerY,
+					width: w,
+					height: h,
+					scaleX: 1,
+					scaleY: 1,
+					angle: 0
 				});
+				line.x1 = p1AbsX - centerX;
+				line.y1 = p1AbsY - centerY;
+				line.x2 = p2Abs.x - centerX;
+				line.y2 = p2Abs.y - centerY;
 				
 				line.setCoords();
 				updateZPL();
@@ -249,22 +273,47 @@
 				if (!canvas) return false;
 				
 				const pointer = canvas.getPointer(eventData);
-				let p2X = pointer.x - (line.left || 0);
-				let p2Y = pointer.y - (line.top || 0);
+				const matrix = line.calcTransformMatrix();
+				const p1Abs = fabric.util.transformPoint(
+					new fabric.Point(line.x1 || 0, line.y1 || 0),
+					matrix
+				);
 				
-				// Snap near vertical (same X as line.x1)
-				if (Math.abs(p2X - line.x1!) < 15) {
-					p2X = line.x1!;
+				let p2AbsX = pointer.x;
+				let p2AbsY = pointer.y;
+				
+				// Snap near vertical (same X as p1)
+				if (Math.abs(p2AbsX - p1Abs.x) < 15) {
+					p2AbsX = p1Abs.x;
 				}
-				// Snap near horizontal (same Y as line.y1)
-				if (Math.abs(p2Y - line.y1!) < 15) {
-					p2Y = line.y1!;
+				// Snap near horizontal (same Y as p1)
+				if (Math.abs(p2AbsY - p1Abs.y) < 15) {
+					p2AbsY = p1Abs.y;
 				}
+				
+				const minX = Math.min(p1Abs.x, p2AbsX);
+				const minY = Math.min(p1Abs.y, p2AbsY);
+				const maxX = Math.max(p1Abs.x, p2AbsX);
+				const maxY = Math.max(p1Abs.y, p2AbsY);
+				const w = maxX - minX || 1;
+				const h = maxY - minY || 1;
+				
+				const centerX = minX + w / 2;
+				const centerY = minY + h / 2;
 				
 				line.set({
-					x2: p2X,
-					y2: p2Y
+					left: centerX,
+					top: centerY,
+					width: w,
+					height: h,
+					scaleX: 1,
+					scaleY: 1,
+					angle: 0
 				});
+				line.x1 = p1Abs.x - centerX;
+				line.y1 = p1Abs.y - centerY;
+				line.x2 = p2AbsX - centerX;
+				line.y2 = p2AbsY - centerY;
 				
 				line.setCoords();
 				updateZPL();
@@ -294,29 +343,25 @@
 	};
 
 	function centerLine(line: fabric.Line) {
-		const x1 = line.x1 || 0;
-		const y1 = line.y1 || 0;
-		const x2 = line.x2 || 0;
-		const y2 = line.y2 || 0;
+		const matrix = line.calcTransformMatrix();
+		const p1Abs = fabric.util.transformPoint(
+			new fabric.Point(line.x1 || 0, line.y1 || 0),
+			matrix
+		);
+		const p2Abs = fabric.util.transformPoint(
+			new fabric.Point(line.x2 || 0, line.y2 || 0),
+			matrix
+		);
 		
-		const currentLeft = line.left || 0;
-		const currentTop = line.top || 0;
-		
-		const p1x = currentLeft + x1;
-		const p1y = currentTop + y1;
-		const p2x = currentLeft + x2;
-		const p2y = currentTop + y2;
-		
-		const minX = Math.min(p1x, p2x);
-		const minY = Math.min(p1y, p2y);
-		const maxX = Math.max(p1x, p2x);
-		const maxY = Math.max(p1y, p2y);
+		const minX = Math.min(p1Abs.x, p2Abs.x);
+		const minY = Math.min(p1Abs.y, p2Abs.y);
+		const maxX = Math.max(p1Abs.x, p2Abs.x);
+		const maxY = Math.max(p1Abs.y, p2Abs.y);
 		const w = maxX - minX || 1;
 		const h = maxY - minY || 1;
 		
 		const centerX = minX + w / 2;
 		const centerY = minY + h / 2;
-		console.log('centerLine: currentLeft =', currentLeft, 'currentTop =', currentTop, 'p1x =', p1x, 'p1y =', p1y, 'centerX =', centerX, 'centerY =', centerY);
 		
 		line.set({
 			left: centerX,
@@ -327,11 +372,12 @@
 			height: h,
 			scaleX: 1,
 			scaleY: 1,
-			x1: p1x - centerX,
-			y1: p1y - centerY,
-			x2: p2x - centerX,
-			y2: p2y - centerY
-		} as any);
+			angle: 0
+		});
+		line.x1 = p1Abs.x - centerX;
+		line.y1 = p1Abs.y - centerY;
+		line.x2 = p2Abs.x - centerX;
+		line.y2 = p2Abs.y - centerY;
 		
 		line.setCoords();
 	}
@@ -362,12 +408,12 @@
 			width: w,
 			height: h,
 			scaleX: 1,
-			scaleY: 1,
-			x1: -w / 2,
-			y1: -h / 2,
-			x2: w / 2,
-			y2: h / 2
+			scaleY: 1
 		});
+		(activeObject as fabric.Line).x1 = -w / 2;
+		(activeObject as fabric.Line).y1 = -h / 2;
+		(activeObject as fabric.Line).x2 = w / 2;
+		(activeObject as fabric.Line).y2 = h / 2;
 		activeObject.setCoords();
 		fabricCanvas?.renderAll();
 		updateZPL();
@@ -497,6 +543,19 @@
 		}, 2000);
 	}
 
+	function downloadZPL() {
+		const blob = new Blob([zpl], { type: 'text/plain;charset=utf-8' });
+		const url = URL.createObjectURL(blob);
+		const timestamp = new Date().toISOString().replace(/:/g, '-');
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `label-${timestamp}.zpl`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+
 	function applyPreset(w: number, h: number, presetDpi: number) {
 		width = w;
 		height = h;
@@ -601,6 +660,9 @@
 		</div>
 
 		<div class="toolbar-actions">
+			<button class="btn btn-secondary" onclick={downloadZPL}>
+				Download ZPL
+			</button>
 			<button class="btn btn-accent" onclick={copyZPL}>
 				{copiedNotification ? '✓ Copied!' : 'Copy ZPL'}
 			</button>
@@ -1125,6 +1187,21 @@
 		font-weight: 600;
 		font-size: 0.85rem;
 		transition: background 0.15s ease;
+	}
+
+	.toolbar-actions {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.btn-secondary {
+		background: #475569;
+		color: #ffffff;
+	}
+
+	.btn-secondary:hover {
+		background: #334155;
 	}
 
 	.btn-accent {
