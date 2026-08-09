@@ -1,16 +1,23 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import ZPLEditor from './ZPLEditor.svelte';
 import { fabric } from 'fabric';
 import { renderBarcodeDataUrl } from './zpl/barcodeRenderer.js';
 import { tick } from 'svelte';
 
+const DEFAULT_BARCODE_DATA_URL =
+	'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+
 vi.mock('./zpl/barcodeRenderer.js', () => ({
 	renderBarcodeDataUrl: vi.fn(async () =>
 		'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 	)
 }));
+
+afterEach(() => {
+	vi.mocked(renderBarcodeDataUrl).mockImplementation(async () => DEFAULT_BARCODE_DATA_URL);
+});
 
 async function renderEditor(props: Record<string, unknown> = {}) {
 	const addSpy = vi.spyOn(fabric.Canvas.prototype, 'add');
@@ -133,5 +140,35 @@ describe('ZPLEditor placeholder authoring', () => {
 		await expect
 			.element(page.getByText(/Placeholder “9sku” at field-1:/))
 			.toBeInTheDocument();
+	});
+
+	it('does not apply a delayed placeholder preview after barcode data changes', async () => {
+		const staleDataUrl = 'data:image/gif;base64,stale-preview';
+		let resolveStaleRender!: (dataUrl: string) => void;
+		const staleRender = new Promise<string>((resolve) => {
+			resolveStaleRender = resolve;
+		});
+		vi.mocked(renderBarcodeDataUrl).mockImplementation(async (text) => {
+			if (text.includes('[lot-code]')) return staleRender;
+			return DEFAULT_BARCODE_DATA_URL;
+		});
+
+		const canvas = await renderEditor();
+		const barcode = (await selectObject(canvas, 'barcode')) as fabric.Image & {
+			zplData: string;
+		};
+		const setSrcSpy = vi.spyOn(barcode, 'setSrc');
+
+		await page.getByLabelText('Placeholder name').fill('lot-code');
+		await page.getByRole('button', { name: 'Insert placeholder' }).click();
+		await vi.waitFor(() => expect(barcode.zplData).toContain('{{lot-code}}'));
+
+		await page.getByLabelText('Barcode Value:').fill('fresh-value');
+		await vi.waitFor(() => expect(barcode.zplData).toBe('fresh-value'));
+
+		resolveStaleRender(staleDataUrl);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(setSrcSpy).not.toHaveBeenCalledWith(staleDataUrl, expect.any(Function));
 	});
 });

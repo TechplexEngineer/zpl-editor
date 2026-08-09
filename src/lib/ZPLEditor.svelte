@@ -674,8 +674,8 @@
 		}
 
 		const textObject = isTextObject(activeObject);
-		const barcodeObject = activeObject.zplType === 'barcode';
-		if (!textObject && !barcodeObject) {
+		const isBarcodeObject = activeObject.zplType === 'barcode';
+		if (!textObject && !isBarcodeObject) {
 			placeholderError = 'Placeholders can only be inserted into text or barcode values.';
 			return;
 		}
@@ -706,11 +706,22 @@
 			return;
 		}
 
-		activeObject.zplData = updated;
+		const barcodeObject = activeObject as fabric.Image & {
+			zplData: string;
+			barcodeFormat?: BarcodeFormat;
+		};
+		const barcodeCanvas = fabricCanvas;
+		barcodeObject.zplData = updated;
 		updateZPL();
-		const format = activeObject.barcodeFormat || 'QR';
+		const format = barcodeObject.barcodeFormat || 'QR';
 		const newDataUrl = await renderBarcodeDataUrl(placeholderPreviewText(updated), format);
-		activeObject.setSrc(newDataUrl, () => fabricCanvas?.renderAll());
+		if (
+			barcodeObject.zplData !== updated ||
+			!barcodeCanvas.getObjects().includes(barcodeObject)
+		) {
+			return;
+		}
+		barcodeObject.setSrc(newDataUrl, () => barcodeCanvas.renderAll());
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
