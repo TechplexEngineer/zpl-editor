@@ -73,4 +73,52 @@ describe('ZPL Editor Page', () => {
 		// Verify the "Delete" button is still in the document (item was NOT deleted)
 		await expect.element(deleteButton).toBeInTheDocument();
 	});
+
+	it('undoes and redoes canvas deletion from the toolbar', async () => {
+		render(Page);
+
+		await expect.element(page.getByText('🏷️ ZPL Editor', { exact: true })).toBeInTheDocument();
+
+		const deleteButton = page.getByRole('button', { name: 'Delete', exact: true });
+		const undoButton = page.getByRole('button', { name: 'Undo', exact: true });
+		const redoButton = page.getByRole('button', { name: 'Redo', exact: true });
+
+		await deleteButton.click();
+		await expect.element(deleteButton).not.toBeInTheDocument();
+
+		await undoButton.click();
+		await expect.element(page.getByRole('button', { name: 'Delete', exact: true })).toBeInTheDocument();
+
+		await redoButton.click();
+		await expect.element(page.getByRole('button', { name: 'Delete', exact: true })).not.toBeInTheDocument();
+	});
+
+	it('undoes and redoes property changes with keyboard shortcuts', async () => {
+		render(Page);
+
+		await expect.element(page.getByText('🏷️ ZPL Editor', { exact: true })).toBeInTheDocument();
+
+		const barcodeValueInput = document.querySelector(
+			'input[type="text"]'
+		) as HTMLInputElement | null;
+		expect(barcodeValueInput).not.toBeNull();
+		expect(barcodeValueInput?.value).toBe('https://example.com');
+
+		barcodeValueInput!.focus();
+		barcodeValueInput!.value = 'UNDO-REDO-TEST';
+		barcodeValueInput!.dispatchEvent(new Event('input', { bubbles: true }));
+
+		expect(barcodeValueInput!.value).toBe('UNDO-REDO-TEST');
+
+		barcodeValueInput!.blur();
+		await userEvent.keyboard('{Control>}z{/Control}');
+
+		const restoredInput = document.querySelector('input[type="text"]') as HTMLInputElement | null;
+		expect(restoredInput?.value).toBe('https://example.com');
+
+		await userEvent.keyboard('{Control>}y{/Control}');
+
+		const redoneInput = document.querySelector('input[type="text"]') as HTMLInputElement | null;
+		expect(redoneInput?.value).toBe('UNDO-REDO-TEST');
+	});
 });
