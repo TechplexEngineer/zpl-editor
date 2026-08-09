@@ -33,6 +33,7 @@
 	let fabricCanvas: fabric.Canvas | null = null;
 	let zoomScale = $state(0.5); // Default zoom scale to fit 300DPI canvas comfortably
 	let activeObject = $state<any>(null);
+	let forceRender = $state(0);
 	let copiedNotification = $state(false);
 
 	// Calculated label dot dimensions
@@ -133,11 +134,12 @@
 		onChange(generated);
 		// Trigger activeObject property sync
 		activeObject = fabricCanvas.getActiveObject() || null;
+		forceRender++;
 	}
 
 	function addText(content = 'Text', x = 50, y = 50, size = 36) {
 		if (!fabricCanvas) return;
-		const textObj = new fabric.IText(content, {
+		const textObj = new fabric.Textbox(content, {
 			left: x,
 			top: y,
 			fontSize: size,
@@ -566,6 +568,8 @@
 	function updateActiveProp(key: string, value: any) {
 		if (!activeObject || !fabricCanvas) return;
 		activeObject.set(key, value);
+		// Force Svelte 5 reactivity proxy to register the update
+		activeObject[key] = value;
 		activeObject.setCoords();
 		fabricCanvas.renderAll();
 		updateZPL();
@@ -775,7 +779,7 @@
 					</label>
 				</div>
 
-				{#if activeObject.zplType === 'text' || activeObject.type === 'i-text'}
+				{#if activeObject.zplType === 'text' || activeObject.type === 'i-text' || activeObject.type === 'textbox'}
 					<div class="prop-field">
 						<label>
 							<span>Text Content:</span>
@@ -787,7 +791,7 @@
 						</label>
 					</div>
 
-					<div class="prop-field">
+					<div class="prop-grid">
 						<label>
 							<span>Font Size (pt):</span>
 							<input
@@ -796,6 +800,38 @@
 								oninput={(e) => updateActiveProp('fontSize', parseInt(e.currentTarget.value))}
 							/>
 						</label>
+						<label>
+							<span>Block Width:</span>
+							<input
+								type="number"
+								value={Math.round((activeObject.width || 0) * (activeObject.scaleX || 1))}
+								oninput={(e) => {
+									const w = parseFloat(e.currentTarget.value);
+									activeObject.set('width', w / (activeObject.scaleX || 1));
+									activeObject.setCoords();
+									fabricCanvas?.renderAll();
+									updateZPL();
+								}}
+							/>
+						</label>
+					</div>
+
+					<div class="prop-field">
+						<label><span>Alignment (ZPL FB Block):</span></label>
+						<div class="align-group">
+							<button class="align-btn" class:active={forceRender > -1 && (!activeObject.textAlign || activeObject.textAlign === 'left')} onclick={() => updateActiveProp('textAlign', 'left')} title="Left">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h8v2H2V7zm0 4h12v2H2v-2z"/></svg>
+							</button>
+							<button class="align-btn" class:active={forceRender > -1 && activeObject.textAlign === 'center'} onclick={() => updateActiveProp('textAlign', 'center')} title="Center">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm2 4h8v2H4V7zm-2 4h12v2H2v-2z"/></svg>
+							</button>
+							<button class="align-btn" class:active={forceRender > -1 && activeObject.textAlign === 'right'} onclick={() => updateActiveProp('textAlign', 'right')} title="Right">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm4 4h8v2H6V7zm-4 4h12v2H2v-2z"/></svg>
+							</button>
+							<button class="align-btn" class:active={forceRender > -1 && activeObject.textAlign === 'justify'} onclick={() => updateActiveProp('textAlign', 'justify')} title="Justify">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h12v2H2v-2z"/></svg>
+							</button>
+						</div>
 					</div>
 				{/if}
 
@@ -1225,6 +1261,39 @@
 	.btn-sm {
 		padding: 0.25rem 0.5rem;
 		font-size: 0.75rem;
+	}
+
+	.align-group {
+		display: flex;
+		gap: 0.25rem;
+		background: #0f172a;
+		padding: 0.25rem;
+		border-radius: 0.375rem;
+		border: 1px solid #334155;
+	}
+
+	.align-btn {
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		padding: 0.4rem;
+		background: transparent;
+		border: none;
+		border-radius: 0.25rem;
+		color: #94a3b8;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.align-btn:hover {
+		color: #f8fafc;
+		background: #1e293b;
+	}
+
+	.align-btn.active {
+		background: #334155;
+		color: #38bdf8;
 	}
 
 	.no-selection {
