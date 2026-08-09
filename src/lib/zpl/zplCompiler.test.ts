@@ -110,6 +110,16 @@ describe('ZPL Compiler Utility Functions', () => {
 				strokeWidth: 3
 			},
 			{
+				left: 20,
+				top: 30,
+				angle: 0,
+				zplType: 'circle',
+				radius: 30,
+				scaleX: 2,
+				scaleY: 1,
+				strokeWidth: 3
+			},
+			{
 				zplType: 'line',
 				x1: -75,
 				y1: 50,
@@ -136,6 +146,7 @@ describe('ZPL Compiler Utility Functions', () => {
 		} as any;
 		const zpl = compileFabricCanvasToZPL(mockCanvas, { widthInches: 4, heightInches: 6, dpi: 300 });
 		expect(zpl).toContain('^FO10,20^GC60,3,B^FS');
+		expect(zpl).toContain('^FO20,30^GE120,60,3,B^FS');
 		expect(zpl).toContain('^FO40,50^GD150,100,4,B,R^FS');
 		expect(zpl).toContain('^FO50,50^GB200,100,4,B,6^FS');
 	});
