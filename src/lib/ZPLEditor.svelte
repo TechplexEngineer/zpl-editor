@@ -701,7 +701,7 @@
 			noScaleCache: false,
 			snapAngle: 90
 		});
-		(ellipseObj as any).zplType = 'circle';
+		(ellipseObj as any).zplType = 'ellipse';
 		fabricCanvas.add(ellipseObj);
 	}
 
@@ -714,7 +714,7 @@
 		const length = Math.sqrt(dx * dx + dy * dy) || 1;
 		const angle = Math.atan2(dy, dx) * 180 / Math.PI;
 		const centerX = el.x + el.width / 2;
-		const centerY = el.orientation === 'R' ? el.y + el.height / 2 : el.y + el.height / 2;
+		const centerY = el.y + el.height / 2;
 
 		const lineObj = new fabric.Line([-length / 2, 0, length / 2, 0], {
 			left: centerX,

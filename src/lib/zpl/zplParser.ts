@@ -318,9 +318,9 @@ export function parseZPL(zpl: string): ParseResult {
 			const data = token.slice(2); // everything after 'FD'
 
 			if (barcodeFormat !== null) {
-				// Strip QR wrapper prefix "QA,"
+				// Strip QR wrapper prefix (e.g. "QA,", "QM,", "QB,")
 				let barcodeData = data;
-				if (barcodeFormat === 'QR' && barcodeData.startsWith('QA,')) {
+				if (barcodeFormat === 'QR' && /^Q[A-Z],/.test(barcodeData)) {
 					barcodeData = barcodeData.slice(3);
 				}
 				result.elements.push({
