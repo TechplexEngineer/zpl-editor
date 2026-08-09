@@ -90,3 +90,8 @@ npm run build
 ## Current focus
 
 The library is currently centered on delivering a reusable editor component for Svelte apps that need in-browser ZPL label design, live ZPL output, and a simple preview workflow.
+
+## Reference
+- [ZPL Spec](https://cpws.zebra.com/cpws/docs/zpl/zpl_manual.pdf)
+- [C# ZPL Renderer](https://github.com/BinaryKits/BinaryKits.Zpl)
+- [Go ZPL Renderer](https://github.com/ingridhq/zebrash)
