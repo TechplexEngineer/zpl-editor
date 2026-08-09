@@ -520,14 +520,40 @@
 			imgObj.src = event.target?.result as string;
 
 			imgObj.onload = () => {
-				const tempCanvas = document.createElement('canvas');
-				tempCanvas.width = imgObj.width;
-				tempCanvas.height = imgObj.height;
-				const ctx = tempCanvas.getContext('2d')!;
-				ctx.drawImage(imgObj, 0, 0);
+				const MAX_DIM = 800;
+				let w = imgObj.width;
+				let h = imgObj.height;
+				if (w > MAX_DIM || h > MAX_DIM) {
+					const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+					w = Math.round(w * ratio);
+					h = Math.round(h * ratio);
+				}
 
-				const imgData = ctx.getImageData(0, 0, imgObj.width, imgObj.height);
-				const gfHex = rgbaToZplGF(imgData.data, imgObj.width, imgObj.height);
+				const tempCanvas = document.createElement('canvas');
+				tempCanvas.width = w;
+				tempCanvas.height = h;
+				const ctx = tempCanvas.getContext('2d')!;
+				ctx.drawImage(imgObj, 0, 0, w, h);
+
+				const originalImgData = ctx.getImageData(0, 0, w, h);
+				const defaultThreshold = 128;
+				const gfHex = rgbaToZplGF(originalImgData.data, w, h, defaultThreshold);
+
+				const binarizedImgData = new ImageData(new Uint8ClampedArray(originalImgData.data), w, h);
+				for (let i = 0; i < binarizedImgData.data.length; i += 4) {
+					const r = binarizedImgData.data[i];
+					const g = binarizedImgData.data[i + 1];
+					const b = binarizedImgData.data[i + 2];
+					const a = binarizedImgData.data[i + 3];
+					const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+					const isBlack = a > 128 && luminance < defaultThreshold;
+					const val = isBlack ? 0 : 255;
+					binarizedImgData.data[i] = val;
+					binarizedImgData.data[i + 1] = val;
+					binarizedImgData.data[i + 2] = val;
+					binarizedImgData.data[i + 3] = a > 128 ? 255 : 0;
+				}
+				ctx.putImageData(binarizedImgData, 0, 0);
 
 				fabric.Image.fromURL(tempCanvas.toDataURL(), (fImg) => {
 					fImg.set({
@@ -537,6 +563,8 @@
 					});
 					(fImg as any).zplType = 'image';
 					(fImg as any).zplGFData = gfHex;
+					(fImg as any).zplOriginalImgData = originalImgData;
+					(fImg as any).zplThreshold = defaultThreshold;
 
 					fabricCanvas?.add(fImg);
 					fabricCanvas?.setActiveObject(fImg);
@@ -611,6 +639,47 @@
 		const format = (activeObject as any).barcodeFormat || 'QR';
 		const newDataUrl = await renderBarcodeDataUrl(newText, format);
 		activeObject.setSrc(newDataUrl, () => {
+			fabricCanvas?.renderAll();
+			updateZPL();
+		});
+	}
+
+	function updateImageThreshold(newThreshold: number) {
+		if (!activeObject || (activeObject as any).zplType !== 'image') return;
+		
+		const originalImgData = (activeObject as any).zplOriginalImgData;
+		if (!originalImgData) return;
+
+		(activeObject as any).zplThreshold = newThreshold;
+		
+		const w = originalImgData.width;
+		const h = originalImgData.height;
+		
+		const gfHex = rgbaToZplGF(originalImgData.data, w, h, newThreshold);
+		(activeObject as any).zplGFData = gfHex;
+
+		const binarizedImgData = new ImageData(new Uint8ClampedArray(originalImgData.data), w, h);
+		for (let i = 0; i < binarizedImgData.data.length; i += 4) {
+			const r = binarizedImgData.data[i];
+			const g = binarizedImgData.data[i + 1];
+			const b = binarizedImgData.data[i + 2];
+			const a = binarizedImgData.data[i + 3];
+			const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+			const isBlack = a > 128 && luminance < newThreshold;
+			const val = isBlack ? 0 : 255;
+			binarizedImgData.data[i] = val;
+			binarizedImgData.data[i + 1] = val;
+			binarizedImgData.data[i + 2] = val;
+			binarizedImgData.data[i + 3] = a > 128 ? 255 : 0;
+		}
+
+		const tempCanvas = document.createElement('canvas');
+		tempCanvas.width = w;
+		tempCanvas.height = h;
+		const ctx = tempCanvas.getContext('2d')!;
+		ctx.putImageData(binarizedImgData, 0, 0);
+
+		activeObject.setSrc(tempCanvas.toDataURL(), () => {
 			fabricCanvas?.renderAll();
 			updateZPL();
 		});
@@ -984,6 +1053,28 @@
 								value={activeObject.strokeWidth || 4}
 								oninput={(e) => updateActiveProp('strokeWidth', parseInt(e.currentTarget.value))}
 							/>
+						</label>
+					</div>
+				{/if}
+
+				{#if activeObject.zplType === 'image'}
+					<div class="prop-field">
+						<label>
+							<span>Threshold (0-255):</span>
+							<div style="display: flex; align-items: center; gap: 0.5rem;">
+								<input
+									type="range"
+									min="1"
+									max="255"
+									step="1"
+									value={(activeObject as any).zplThreshold || 128}
+									oninput={(e) => updateImageThreshold(parseInt(e.currentTarget.value))}
+									style="flex: 1;"
+								/>
+								<span class="zoom-val" style="min-width: 2rem; text-align: right;"
+									>{(activeObject as any).zplThreshold || 128}</span
+								>
+							</div>
 						</label>
 					</div>
 				{/if}
