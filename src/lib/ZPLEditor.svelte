@@ -180,6 +180,21 @@
 		fabricCanvas.renderAll();
 	}
 
+	function applyLabelSettings(nextWidth = width, nextHeight = height, nextDpi = dpi) {
+		if (!Number.isFinite(nextWidth) || !Number.isFinite(nextHeight) || !Number.isFinite(nextDpi)) {
+			return;
+		}
+		width = nextWidth;
+		height = nextHeight;
+		dpi = nextDpi;
+		lastLabelConfig = `${width}:${height}:${dpi}`;
+		syncCanvasDimensions(inchesToDots(width, dpi), inchesToDots(height, dpi));
+		updateZPL();
+		if (hasInitializedHistory && !suppressHistory) {
+			pushHistorySnapshot();
+		}
+	}
+
 	function ensureHistoryId(obj: fabric.Object) {
 		if (!(obj as any).historyId) {
 			(obj as any).historyId = `obj-${nextHistoryId++}`;
@@ -796,9 +811,7 @@
 	}
 
 	function applyPreset(w: number, h: number, presetDpi: number) {
-		width = w;
-		height = h;
-		dpi = presetDpi;
+		applyLabelSettings(w, h, presetDpi);
 	}
 
 	// Active Object Property Handlers
@@ -889,17 +902,31 @@
 		<div class="toolbar-controls">
 			<label class="control-group">
 				<span>Width (in):</span>
-				<input type="number" step="0.25" min="0.5" max="12" bind:value={width} />
+				<input
+					type="number"
+					step="0.25"
+					min="0.5"
+					max="12"
+					value={width}
+					oninput={(e) => applyLabelSettings(parseFloat(e.currentTarget.value), height, dpi)}
+				/>
 			</label>
 
 			<label class="control-group">
 				<span>Height (in):</span>
-				<input type="number" step="0.25" min="0.5" max="12" bind:value={height} />
+				<input
+					type="number"
+					step="0.25"
+					min="0.5"
+					max="12"
+					value={height}
+					oninput={(e) => applyLabelSettings(width, parseFloat(e.currentTarget.value), dpi)}
+				/>
 			</label>
 
 			<label class="control-group">
 				<span>DPI:</span>
-				<select bind:value={dpi}>
+				<select value={dpi} onchange={(e) => applyLabelSettings(width, height, parseInt(e.currentTarget.value))}>
 					<option value={200}>200 DPI</option>
 					<option value={300}>300 DPI (Default)</option>
 					<option value={600}>600 DPI</option>

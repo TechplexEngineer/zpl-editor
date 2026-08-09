@@ -93,32 +93,31 @@ describe('ZPL Editor Page', () => {
 		await expect.element(page.getByRole('button', { name: 'Delete', exact: true })).not.toBeInTheDocument();
 	});
 
-	it('undoes and redoes property changes with keyboard shortcuts', async () => {
+	it('undoes and redoes toolbar property changes', async () => {
 		render(Page);
 
 		await expect.element(page.getByText('🏷️ ZPL Editor', { exact: true })).toBeInTheDocument();
 
-		const barcodeValueInput = document.querySelector(
-			'input[type="text"]'
-		) as HTMLInputElement | null;
-		expect(barcodeValueInput).not.toBeNull();
-		expect(barcodeValueInput?.value).toBe('https://example.com');
+		const widthInput = document.querySelector('input[type="number"]') as HTMLInputElement | null;
+		const undoButton = page.getByRole('button', { name: 'Undo', exact: true });
+		const redoButton = page.getByRole('button', { name: 'Redo', exact: true });
+		expect(widthInput).not.toBeNull();
+		expect(widthInput?.value).toBe('4');
 
-		barcodeValueInput!.focus();
-		barcodeValueInput!.value = 'UNDO-REDO-TEST';
-		barcodeValueInput!.dispatchEvent(new Event('input', { bubbles: true }));
+		widthInput!.focus();
+		widthInput!.select();
+		await userEvent.keyboard('5');
 
-		expect(barcodeValueInput!.value).toBe('UNDO-REDO-TEST');
+		expect(widthInput!.value).toBe('5');
 
-		barcodeValueInput!.blur();
-		await userEvent.keyboard('{Control>}z{/Control}');
+		await undoButton.click();
 
-		const restoredInput = document.querySelector('input[type="text"]') as HTMLInputElement | null;
-		expect(restoredInput?.value).toBe('https://example.com');
+		const restoredInput = document.querySelector('input[type="number"]') as HTMLInputElement | null;
+		expect(restoredInput?.value).toBe('4');
 
-		await userEvent.keyboard('{Control>}y{/Control}');
+		await redoButton.click();
 
-		const redoneInput = document.querySelector('input[type="text"]') as HTMLInputElement | null;
-		expect(redoneInput?.value).toBe('UNDO-REDO-TEST');
+		const redoneInput = document.querySelector('input[type="number"]') as HTMLInputElement | null;
+		expect(redoneInput?.value).toBe('5');
 	});
 });
