@@ -69,13 +69,19 @@
 
 		// Set default snap angle for all objects
 		fabric.Object.prototype.snapAngle = 90;
-		fabric.Object.prototype.snapThreshold = 10;
+		fabric.Object.prototype.snapThreshold = 45;
 
 		// Attach events
 		fabricCanvas.on('selection:created', handleSelection);
 		fabricCanvas.on('selection:updated', handleSelection);
 		fabricCanvas.on('selection:cleared', () => {
 			activeObject = null;
+		});
+
+		fabricCanvas.on('object:rotating', (e) => {
+			if (e.target && e.target.angle !== undefined) {
+				e.target.angle = Math.round(e.target.angle / 90) * 90;
+			}
 		});
 
 		fabricCanvas.on('object:modified', (e) => {

@@ -122,8 +122,14 @@ export function compileFabricCanvasToZPL(canvas: fabric.Canvas, config: LabelCon
 			const radius = circleObj.radius || 50;
 			const scaleX = circleObj.scaleX || 1;
 			const scaleY = circleObj.scaleY || 1;
-			const diameterX = Math.round(radius * 2 * scaleX);
-			const diameterY = Math.round(radius * 2 * scaleY);
+			let diameterX = Math.round(radius * 2 * scaleX);
+			let diameterY = Math.round(radius * 2 * scaleY);
+			
+			const norm = ((angle % 360) + 360) % 360;
+			if (norm === 90 || norm === 270) {
+				[diameterX, diameterY] = [diameterY, diameterX];
+			}
+			
 			const t = Math.max(1, Math.round(circleObj.strokeWidth || 2));
 			
 			if (diameterX === diameterY) {
