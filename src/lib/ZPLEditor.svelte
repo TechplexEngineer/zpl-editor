@@ -99,7 +99,27 @@
 		fabricCanvas.on('object:removed', updateZPL);
 		fabricCanvas.on('object:scaling', (e) => {
 			const obj = e.target;
-			if (obj && (obj as any).zplType === 'rectangle') {
+			if (!obj) return;
+
+			if ((obj as any).zplType === 'barcode') {
+				const scale = Math.max(1, Math.round(Math.max(obj.scaleX || 1, obj.scaleY || 1)));
+				obj.set({
+					scaleX: scale,
+					scaleY: scale
+				});
+			} else {
+				// Snap the visual width and height to integer pixels
+				if (obj.width && obj.scaleX) {
+					const targetWidth = Math.round(obj.width * obj.scaleX);
+					obj.set('scaleX', targetWidth / obj.width);
+				}
+				if (obj.height && obj.scaleY) {
+					const targetHeight = Math.round(obj.height * obj.scaleY);
+					obj.set('scaleY', targetHeight / obj.height);
+				}
+			}
+
+			if ((obj as any).zplType === 'rectangle') {
 				const rectObj = obj as fabric.Rect;
 				const roundingVal = (rectObj as any).zplRounding || 0;
 				const w = (rectObj.width || 0) * (rectObj.scaleX || 1);
@@ -109,13 +129,6 @@
 					rx: rx / (rectObj.scaleX || 1),
 					ry: rx / (rectObj.scaleY || 1)
 				} as any);
-			}
-			if (obj && (obj as any).zplType === 'barcode') {
-				const scale = Math.max(obj.scaleX || 1, obj.scaleY || 1);
-				obj.set({
-					scaleX: scale,
-					scaleY: scale
-				});
 			}
 		});
 
@@ -202,18 +215,18 @@
 		p1: new fabric.Control({
 			x: -0.5,
 			y: -0.5,
-			actionHandler: function(eventData, transform, x, y) {
+			actionHandler: function (eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-				
+
 				const pointer = canvas.getPointer(eventData);
 				const matrix = line.calcTransformMatrix();
 				const p2Abs = fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
 					matrix
 				);
-				
+
 				let p1AbsX = pointer.x;
 				let p1AbsY = pointer.y;
 
@@ -225,17 +238,17 @@
 				if (Math.abs(p1AbsY - p2Abs.y) < 15) {
 					p1AbsY = p2Abs.y;
 				}
-				
+
 				const minX = Math.min(p1AbsX, p2Abs.x);
 				const minY = Math.min(p1AbsY, p2Abs.y);
 				const maxX = Math.max(p1AbsX, p2Abs.x);
 				const maxY = Math.max(p1AbsY, p2Abs.y);
 				const w = maxX - minX || 1;
 				const h = maxY - minY || 1;
-				
+
 				const centerX = minX + w / 2;
 				const centerY = minY + h / 2;
-				
+
 				line.set({
 					left: centerX,
 					top: centerY,
@@ -249,14 +262,14 @@
 				line.y1 = p1AbsY - centerY;
 				line.x2 = p2Abs.x - centerX;
 				line.y2 = p2Abs.y - centerY;
-				
+
 				line.setCoords();
 				updateZPL();
 				canvas.requestRenderAll();
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function(ctx, left, top, styleOverride, fabricObject) {
+			render: function (ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -267,7 +280,7 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function(dim, finalMatrix, fabricObject) {
+			positionHandler: function (dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
@@ -278,21 +291,21 @@
 		p2: new fabric.Control({
 			x: 0.5,
 			y: 0.5,
-			actionHandler: function(eventData, transform, x, y) {
+			actionHandler: function (eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-				
+
 				const pointer = canvas.getPointer(eventData);
 				const matrix = line.calcTransformMatrix();
 				const p1Abs = fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
 					matrix
 				);
-				
+
 				let p2AbsX = pointer.x;
 				let p2AbsY = pointer.y;
-				
+
 				// Snap near vertical (same X as p1)
 				if (Math.abs(p2AbsX - p1Abs.x) < 15) {
 					p2AbsX = p1Abs.x;
@@ -301,17 +314,17 @@
 				if (Math.abs(p2AbsY - p1Abs.y) < 15) {
 					p2AbsY = p1Abs.y;
 				}
-				
+
 				const minX = Math.min(p1Abs.x, p2AbsX);
 				const minY = Math.min(p1Abs.y, p2AbsY);
 				const maxX = Math.max(p1Abs.x, p2AbsX);
 				const maxY = Math.max(p1Abs.y, p2AbsY);
 				const w = maxX - minX || 1;
 				const h = maxY - minY || 1;
-				
+
 				const centerX = minX + w / 2;
 				const centerY = minY + h / 2;
-				
+
 				line.set({
 					left: centerX,
 					top: centerY,
@@ -325,14 +338,14 @@
 				line.y1 = p1Abs.y - centerY;
 				line.x2 = p2AbsX - centerX;
 				line.y2 = p2AbsY - centerY;
-				
+
 				line.setCoords();
 				updateZPL();
 				canvas.requestRenderAll();
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function(ctx, left, top, styleOverride, fabricObject) {
+			render: function (ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -343,7 +356,7 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function(dim, finalMatrix, fabricObject) {
+			positionHandler: function (dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
@@ -355,25 +368,19 @@
 
 	function centerLine(line: fabric.Line) {
 		const matrix = line.calcTransformMatrix();
-		const p1Abs = fabric.util.transformPoint(
-			new fabric.Point(line.x1 || 0, line.y1 || 0),
-			matrix
-		);
-		const p2Abs = fabric.util.transformPoint(
-			new fabric.Point(line.x2 || 0, line.y2 || 0),
-			matrix
-		);
-		
+		const p1Abs = fabric.util.transformPoint(new fabric.Point(line.x1 || 0, line.y1 || 0), matrix);
+		const p2Abs = fabric.util.transformPoint(new fabric.Point(line.x2 || 0, line.y2 || 0), matrix);
+
 		const minX = Math.min(p1Abs.x, p2Abs.x);
 		const minY = Math.min(p1Abs.y, p2Abs.y);
 		const maxX = Math.max(p1Abs.x, p2Abs.x);
 		const maxY = Math.max(p1Abs.y, p2Abs.y);
 		const w = maxX - minX || 1;
 		const h = maxY - minY || 1;
-		
+
 		const centerX = minX + w / 2;
 		const centerY = minY + h / 2;
-		
+
 		line.set({
 			left: centerX,
 			top: centerY,
@@ -389,7 +396,7 @@
 		line.y1 = p1Abs.y - centerY;
 		line.x2 = p2Abs.x - centerX;
 		line.y2 = p2Abs.y - centerY;
-		
+
 		line.setCoords();
 	}
 
