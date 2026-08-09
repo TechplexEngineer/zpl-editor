@@ -224,29 +224,28 @@
 					p1AbsY = p2Abs.y;
 				}
 				
-				const minX = Math.min(p1AbsX, p2Abs.x);
-				const minY = Math.min(p1AbsY, p2Abs.y);
-				const maxX = Math.max(p1AbsX, p2Abs.x);
-				const maxY = Math.max(p1AbsY, p2Abs.y);
-				const w = maxX - minX || 1;
-				const h = maxY - minY || 1;
+				const dx = p2Abs.x - p1AbsX;
+				const dy = p2Abs.y - p1AbsY;
+				const w = Math.sqrt(dx * dx + dy * dy) || 1;
+				const angle = Math.atan2(dy, dx) * 180 / Math.PI;
 				
-				const centerX = minX + w / 2;
-				const centerY = minY + h / 2;
+				const centerX = (p1AbsX + p2Abs.x) / 2;
+				const centerY = (p1AbsY + p2Abs.y) / 2;
 				
 				line.set({
+					x1: -w / 2,
+					y1: 0,
+					x2: w / 2,
+					y2: 0,
+					width: w,
+					height: 1, // Minimal height to avoid bounding box issues
 					left: centerX,
 					top: centerY,
-					width: w,
-					height: h,
+					angle: angle,
 					scaleX: 1,
-					scaleY: 1,
-					angle: 0
-				});
-				line.x1 = p1AbsX - centerX;
-				line.y1 = p1AbsY - centerY;
-				line.x2 = p2Abs.x - centerX;
-				line.y2 = p2Abs.y - centerY;
+					scaleY: 1
+				} as any);
+				line.dirty = true;
 				
 				line.setCoords();
 				updateZPL();
@@ -300,29 +299,28 @@
 					p2AbsY = p1Abs.y;
 				}
 				
-				const minX = Math.min(p1Abs.x, p2AbsX);
-				const minY = Math.min(p1Abs.y, p2AbsY);
-				const maxX = Math.max(p1Abs.x, p2AbsX);
-				const maxY = Math.max(p1Abs.y, p2AbsY);
-				const w = maxX - minX || 1;
-				const h = maxY - minY || 1;
+				const dx = p2AbsX - p1Abs.x;
+				const dy = p2AbsY - p1Abs.y;
+				const w = Math.sqrt(dx * dx + dy * dy) || 1;
+				const angle = Math.atan2(dy, dx) * 180 / Math.PI;
 				
-				const centerX = minX + w / 2;
-				const centerY = minY + h / 2;
+				const centerX = (p1Abs.x + p2AbsX) / 2;
+				const centerY = (p1Abs.y + p2AbsY) / 2;
 				
 				line.set({
+					x1: -w / 2,
+					y1: 0,
+					x2: w / 2,
+					y2: 0,
+					width: w,
+					height: 1,
 					left: centerX,
 					top: centerY,
-					width: w,
-					height: h,
+					angle: angle,
 					scaleX: 1,
-					scaleY: 1,
-					angle: 0
-				});
-				line.x1 = p1Abs.x - centerX;
-				line.y1 = p1Abs.y - centerY;
-				line.x2 = p2AbsX - centerX;
-				line.y2 = p2AbsY - centerY;
+					scaleY: 1
+				} as any);
+				line.dirty = true;
 				
 				line.setCoords();
 				updateZPL();
@@ -362,38 +360,42 @@
 			matrix
 		);
 		
-		const minX = Math.min(p1Abs.x, p2Abs.x);
-		const minY = Math.min(p1Abs.y, p2Abs.y);
-		const maxX = Math.max(p1Abs.x, p2Abs.x);
-		const maxY = Math.max(p1Abs.y, p2Abs.y);
-		const w = maxX - minX || 1;
-		const h = maxY - minY || 1;
+		const dx = p2Abs.x - p1Abs.x;
+		const dy = p2Abs.y - p1Abs.y;
+		const w = Math.sqrt(dx * dx + dy * dy) || 1;
+		const angle = Math.atan2(dy, dx) * 180 / Math.PI;
 		
-		const centerX = minX + w / 2;
-		const centerY = minY + h / 2;
+		const centerX = (p1Abs.x + p2Abs.x) / 2;
+		const centerY = (p1Abs.y + p2Abs.y) / 2;
 		
 		line.set({
+			x1: -w / 2,
+			y1: 0,
+			x2: w / 2,
+			y2: 0,
 			left: centerX,
 			top: centerY,
 			originX: 'center',
 			originY: 'center',
 			width: w,
-			height: h,
+			height: 1,
 			scaleX: 1,
 			scaleY: 1,
-			angle: 0
-		});
-		line.x1 = p1Abs.x - centerX;
-		line.y1 = p1Abs.y - centerY;
-		line.x2 = p2Abs.x - centerX;
-		line.y2 = p2Abs.y - centerY;
+			angle: angle
+		} as any);
+		line.dirty = true;
 		
 		line.setCoords();
 	}
 
 	function addLine(x = 50, y = 50, w = 150, h = 150) {
 		if (!fabricCanvas) return;
-		const lineObj = new fabric.Line([-w / 2, -h / 2, w / 2, h / 2], {
+		const dx = w;
+		const dy = h;
+		const length = Math.sqrt(dx * dx + dy * dy);
+		const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+		const lineObj = new fabric.Line([-length / 2, 0, length / 2, 0], {
 			left: x + w / 2,
 			top: y + h / 2,
 			originX: 'center',
@@ -403,7 +405,10 @@
 			strokeUniform: true,
 			hasRotatingPoint: false,
 			lockRotation: true,
-			hasBorders: false
+			hasBorders: false,
+			angle: angle,
+			width: length,
+			height: 1
 		});
 		(lineObj as any).zplType = 'line';
 		lineObj.controls = lineControls;
@@ -413,16 +418,23 @@
 
 	function updateLineSize(w: number, h: number) {
 		if (!activeObject || (activeObject as any).zplType !== 'line') return;
+		
+		const length = Math.sqrt(w * w + h * h) || 1;
+		const angle = Math.atan2(h, w) * 180 / Math.PI;
+
 		activeObject.set({
-			width: w,
-			height: h,
+			x1: -length / 2,
+			y1: 0,
+			x2: length / 2,
+			y2: 0,
+			width: length,
+			height: 1,
+			angle: angle,
 			scaleX: 1,
 			scaleY: 1
-		});
-		(activeObject as fabric.Line).x1 = -w / 2;
-		(activeObject as fabric.Line).y1 = -h / 2;
-		(activeObject as fabric.Line).x2 = w / 2;
-		(activeObject as fabric.Line).y2 = h / 2;
+		} as any);
+		
+		activeObject.dirty = true;
 		activeObject.setCoords();
 		fabricCanvas?.renderAll();
 		updateZPL();
