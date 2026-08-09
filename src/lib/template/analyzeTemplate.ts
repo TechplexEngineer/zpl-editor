@@ -129,25 +129,28 @@ function findFieldIntervals(zpl: string): FieldInterval[] {
 }
 
 function classifyField(commands: string): PlaceholderContext | undefined {
-	let context: PlaceholderContext | undefined;
-	const commandPattern = /\^(?:A|FB|BQN|BX|BC|B3)/g;
+	const fieldCommands = [...commands.matchAll(/\^([A-Z0-9]{1,3})/g)]
+		.map((match) => match[1] ?? '')
+		.map(classifyFieldCommand)
+		.filter((context): context is PlaceholderContext | 'unsupported' => context !== undefined);
 
-	for (const match of commands.matchAll(commandPattern)) {
-		const command = match[0];
-		if (command === '^BQN') {
-			context = barcodeContext('QR');
-		} else if (command === '^BX') {
-			context = barcodeContext('DATAMATRIX');
-		} else if (command === '^BC') {
-			context = barcodeContext('CODE128');
-		} else if (command === '^B3') {
-			context = barcodeContext('CODE39');
-		} else {
-			context = { kind: 'text' };
-		}
+	if (fieldCommands.length !== 1 || fieldCommands[0] === 'unsupported') {
+		return undefined;
 	}
 
-	return context;
+	return fieldCommands[0];
+}
+
+function classifyFieldCommand(command: string): PlaceholderContext | 'unsupported' | undefined {
+	if (command.startsWith('A') || command.startsWith('FB')) return { kind: 'text' };
+	if (command.startsWith('BQN')) return barcodeContext('QR');
+	if (command.startsWith('BX')) return barcodeContext('DATAMATRIX');
+	if (command.startsWith('BC')) return barcodeContext('CODE128');
+	if (command.startsWith('B3')) return barcodeContext('CODE39');
+	if (command.startsWith('B') && !command.startsWith('BY')) return 'unsupported';
+	if (command.startsWith('G') || command.startsWith('TB') || command.startsWith('RF')) {
+		return 'unsupported';
+	}
 }
 
 function barcodeContext(format: BarcodeFormat): PlaceholderContext {

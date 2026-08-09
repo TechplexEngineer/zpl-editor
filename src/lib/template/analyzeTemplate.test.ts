@@ -23,7 +23,8 @@ describe('analyzeTemplate', () => {
 		['^XA^FO1,1^A0N,20,20^FD{{sku name}}^FS^XZ', 'INVALID_NAME'],
 		['^XA^FO1,1^A0N,20,20^FD{{sku^FS^XZ', 'MALFORMED_TOKEN'],
 		['^XA^PW{{width}}^XZ', 'UNSUPPORTED_PLACEMENT'],
-		['^XA^FO1,1^GB10,10,1^FD{{raw}}^FS^XZ', 'UNSUPPORTED_PLACEMENT']
+		['^XA^FO1,1^GB10,10,1^FD{{raw}}^FS^XZ', 'UNSUPPORTED_PLACEMENT'],
+		['^XA^FO1,1^A0N,20,20^GB10,10,1^FD{{raw}}^FS^XZ', 'UNSUPPORTED_PLACEMENT']
 	])('reports %s as %s', (zpl, code) => {
 		expect(analyzeTemplate(zpl).diagnostics[0]?.code).toBe(code);
 	});
