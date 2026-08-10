@@ -59,6 +59,34 @@ describe('renderTemplateRow', () => {
 		expect(rendered).not.toContain('{{sku}}');
 	});
 
+	it('preserves a literal static backslash-hex sequence when adding field hex encoding', () => {
+		const template = String.raw`^XA^FO1,1^A0N,20,20^FDStatic \5E {{sku}}^FS^XZ`;
+
+		const rendered = renderTemplateRow(
+			template,
+			analyzeTemplate(template),
+			{ sku: { kind: 'literal', value: 'A^B' } },
+			{}
+		);
+
+		expect(rendered).toBe(
+			String.raw`^XA^FO1,1^A0N,20,20^FH\^FDStatic \5C5E A\5EB^FS^XZ`
+		);
+	});
+
+	it('uses an existing custom field hex indicator for replacement values', () => {
+		const template = '^XA^FO1,1^A0N,20,20^FH_^FDStatic _5E {{sku}}^FS^XZ';
+
+		const rendered = renderTemplateRow(
+			template,
+			analyzeTemplate(template),
+			{ sku: { kind: 'literal', value: 'A^B_C' } },
+			{}
+		);
+
+		expect(rendered).toBe('^XA^FO1,1^A0N,20,20^FH_^FDStatic _5E A_5EB_5FC^FS^XZ');
+	});
+
 	it('does not recursively evaluate placeholder text returned by a provider', () => {
 		const template = '^XA^FO1,1^A0N,20,20^FD{{sku}} {{other}}^FS^XZ';
 		const analysis = analyzeTemplate(template);

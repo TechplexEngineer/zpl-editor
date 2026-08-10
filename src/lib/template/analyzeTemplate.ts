@@ -31,11 +31,13 @@ export function analyzeTemplate(zpl: string): TemplateAnalysis {
 		const strayClose = zpl.indexOf('}}', cursor);
 
 		if (strayClose !== -1 && (tokenStart === -1 || strayClose < tokenStart)) {
+			const field = findFieldContainingOffset(fields, strayClose);
 			diagnostics.push({
 				code: 'MALFORMED_TOKEN',
 				message: 'Found a closing placeholder delimiter without an opening delimiter.',
 				start: strayClose,
-				end: strayClose + 2
+				end: strayClose + 2,
+				...(field ? { locationId: field.locationId } : {})
 			});
 			cursor = strayClose + 2;
 			continue;
@@ -45,11 +47,13 @@ export function analyzeTemplate(zpl: string): TemplateAnalysis {
 
 		const token = readToken(zpl, tokenStart);
 		if ('malformedAt' in token) {
+			const field = findFieldContainingOffset(fields, tokenStart);
 			diagnostics.push({
 				code: 'MALFORMED_TOKEN',
 				message: 'Placeholder tokens must contain one opening and one closing delimiter.',
 				start: tokenStart,
-				end: token.malformedAt + 1
+				end: token.malformedAt + 1,
+				...(field ? { locationId: field.locationId } : {})
 			});
 			cursor = tokenStart + 2;
 			continue;
@@ -64,6 +68,7 @@ export function analyzeTemplate(zpl: string): TemplateAnalysis {
 				message: 'Placeholders are supported only in text and supported barcode fields.',
 				start: tokenStart,
 				end: token.end,
+				name: token.name,
 				...(field ? { locationId: field.locationId } : {})
 			});
 			cursor = token.end;
@@ -101,6 +106,13 @@ export function analyzeTemplate(zpl: string): TemplateAnalysis {
 		occurrences,
 		diagnostics
 	};
+}
+
+function findFieldContainingOffset(
+	fields: FieldInterval[],
+	offset: number
+): FieldInterval | undefined {
+	return fields.find((field) => offset >= field.contentStart && offset < field.fieldEnd);
 }
 
 function findFieldIntervals(zpl: string): FieldInterval[] {

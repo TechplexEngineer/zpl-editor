@@ -29,6 +29,30 @@ describe('analyzeTemplate', () => {
 		expect(analyzeTemplate(zpl).diagnostics[0]?.code).toBe(code);
 	});
 
+	it('keeps a parsed token name and character offsets for unsupported command placement', () => {
+		const zpl = '^XA^PW{{width}}^XZ';
+
+		expect(analyzeTemplate(zpl).diagnostics[0]).toEqual({
+			code: 'UNSUPPORTED_PLACEMENT',
+			message: 'Placeholders are supported only in text and supported barcode fields.',
+			start: 6,
+			end: 15,
+			name: 'width'
+		});
+	});
+
+	it('keeps a determinable field location for a malformed token', () => {
+		const zpl = '^XA^FO1,1^A0N,20,20^FD{{sku^FS^XZ';
+
+		expect(analyzeTemplate(zpl).diagnostics[0]).toEqual(
+			expect.objectContaining({
+				code: 'MALFORMED_TOKEN',
+				start: zpl.indexOf('{{sku'),
+				locationId: 'field-1'
+			})
+		);
+	});
+
 	it('retains exact token and field offsets for occurrences in one barcode field', () => {
 		const zpl = '^XA^FO1,30^BCN,60,Y,N,N^FD{{sku}}-{{lot-code}}^FS^XZ';
 		const occurrences = analyzeTemplate(zpl).occurrences;

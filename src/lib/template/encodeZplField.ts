@@ -2,11 +2,12 @@ import type { BarcodeFormat } from '../zpl/types.js';
 
 const textEncoder = new TextEncoder();
 
-export function encodeZplFieldValue(value: string): string {
+export function encodeZplFieldValue(value: string, hexIndicator = '\\'): string {
+	const indicatorByte = hexIndicator.charCodeAt(0);
 	return Array.from(textEncoder.encode(value), (byte) =>
-		byte >= 0x20 && byte <= 0x7e && byte !== 0x5e && byte !== 0x7e && byte !== 0x5c
+		byte >= 0x20 && byte <= 0x7e && byte !== 0x5e && byte !== 0x7e && byte !== indicatorByte
 			? String.fromCharCode(byte)
-			: `\\${byte.toString(16).toUpperCase().padStart(2, '0')}`
+			: `${hexIndicator}${byte.toString(16).toUpperCase().padStart(2, '0')}`
 	).join('');
 }
 

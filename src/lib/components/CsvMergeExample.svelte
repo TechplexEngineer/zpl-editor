@@ -26,7 +26,7 @@
 	let templateHasErrors = $derived(template.trim().length === 0 || analysis.diagnostics.length > 0);
 	let csvHasErrors = $derived(!csv || csvError.length > 0);
 	let completeMapping = $derived.by(() => {
-		const mapping: Partial<PlaceholderMapping> = {};
+		const mapping = Object.create(null) as Partial<PlaceholderMapping>;
 		for (const placeholder of analysis.placeholders) {
 			const provider = mappingDraft[placeholder];
 			if (!provider || (provider.kind === 'csv-column' && provider.column === '')) continue;
@@ -36,6 +36,9 @@
 	});
 	let mappingErrors = $derived(validateMapping(analysis, completeMapping, csv?.headers ?? []));
 	let readyToGenerate = $derived(!templateHasErrors && !csvHasErrors && mappingErrors.length === 0);
+	let failedRowCount = $derived(
+		result ? new Set(result.errors.map((error) => error.rowNumber)).size : 0
+	);
 	let preview = $derived.by(() => {
 		const row = csv?.rows[0];
 		if (!readyToGenerate || !row) return undefined;
@@ -172,7 +175,10 @@
 			</p>
 		{/if}
 		{#each analysis.diagnostics as diagnostic (`${diagnostic.code}-${diagnostic.start}-${diagnostic.end}`)}
-			<p class="error">{diagnostic.message}</p>
+			<p class="error">
+				Placeholder “{diagnostic.name ?? 'unknown'}” at {diagnostic.locationId ??
+					`characters ${diagnostic.start}–${diagnostic.end}`}: {diagnostic.message}
+			</p>
 		{/each}
 	</section>
 
@@ -259,7 +265,7 @@
 			<p class="error">{generationError}</p>
 		{/if}
 		{#if result}
-			<p>{result.generated.length} generated, {result.errors.length} failed</p>
+			<p>{result.generated.length} generated, {failedRowCount} failed</p>
 			<ul class="results">
 				{#each result.generated as label (label.rowNumber)}
 					<li>

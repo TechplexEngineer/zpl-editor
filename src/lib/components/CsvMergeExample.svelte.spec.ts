@@ -88,6 +88,32 @@ describe('CsvMergeExample', () => {
 		await expect.element(page.getByRole('button', { name: 'Generate labels' })).toBeEnabled();
 	});
 
+	it('maps a __proto__ placeholder as an own property through the browser workflow', async () => {
+		render(CsvMergeExample);
+
+		await enterTemplate('^XA^FO1,1^A0N,20,20^FD{{__proto__}}^FS^XZ');
+		await uploadCsv('__proto__\nVALUE');
+		await page.getByLabelText('Source for __proto__').selectOptions('csv-column');
+		await page.getByLabelText('CSV column for __proto__').selectOptions('__proto__');
+
+		const generate = page.getByRole('button', { name: 'Generate labels' });
+		await expect.element(generate).toBeEnabled();
+		await expect.element(page.getByLabelText('Representative preview')).toHaveTextContent('VALUE');
+		await generate.click();
+
+		await expect.element(page.getByText('1 generated, 0 failed')).toBeInTheDocument();
+	});
+
+	it('shows the parsed name and character offsets for an unsupported token', async () => {
+		render(CsvMergeExample);
+
+		await enterTemplate('^XA^PW{{width}}^XZ');
+
+		await expect
+			.element(page.getByText(/Placeholder “width” at characters 6–15:/))
+			.toBeInTheDocument();
+	});
+
 	it('keeps valid row downloads when a later CODE39 row fails and exposes no batch actions', async () => {
 		render(CsvMergeExample);
 
@@ -117,6 +143,7 @@ describe('CsvMergeExample', () => {
 		await page.getByLabelText('CSV column for sku').selectOptions('SKU');
 		await page.getByRole('button', { name: 'Generate labels' }).click();
 
+		await expect.element(page.getByText('1 generated, 1 failed')).toBeInTheDocument();
 		await expect.element(page.getByText(/CODE39 values may contain/)).toBeInTheDocument();
 		await expect.element(page.getByText(/CODE128 values may contain/)).toBeInTheDocument();
 		await expect

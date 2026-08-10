@@ -176,23 +176,41 @@ function renderRow(
 		const first = occurrences[0];
 		if (!first) continue;
 
-		let field = template.slice(first.fieldStart, first.fieldEnd);
-		for (const occurrence of [...occurrences].sort((left, right) => right.start - left.start)) {
-			const replacement = encodeZplFieldValue(values.get(occurrence.name) as string);
+		const existingHexIndicator = fieldHexIndicatorBefore(template, first.fieldStart);
+		const hexIndicator = existingHexIndicator ?? '\\';
+		const sourceField = template.slice(first.fieldStart, first.fieldEnd);
+		let field = '';
+		let fieldCursor = 0;
+		for (const occurrence of [...occurrences].sort((left, right) => left.start - right.start)) {
 			const relativeStart = occurrence.start - first.fieldStart;
 			const relativeEnd = occurrence.end - first.fieldStart;
-			field = field.slice(0, relativeStart) + replacement + field.slice(relativeEnd);
+			field += preserveStaticFieldText(
+				sourceField.slice(fieldCursor, relativeStart),
+				existingHexIndicator
+			);
+			field += encodeZplFieldValue(values.get(occurrence.name) as string, hexIndicator);
+			fieldCursor = relativeEnd;
 		}
+		field += preserveStaticFieldText(sourceField.slice(fieldCursor), existingHexIndicator);
 
-		const hasFieldHexIndicator = template.slice(0, first.fieldStart).endsWith('^FH\\');
 		zpl =
 			zpl.slice(0, first.fieldStart) +
-			(hasFieldHexIndicator ? '' : '^FH\\') +
+			(existingHexIndicator === undefined ? '^FH\\' : '') +
 			field +
 			zpl.slice(first.fieldEnd);
 	}
 
 	return { zpl, problems };
+}
+
+function fieldHexIndicatorBefore(template: string, fieldStart: number): string | undefined {
+	const match = template.slice(0, fieldStart).match(/\^FH([^~^]?)$/);
+	if (!match) return undefined;
+	return match[1] || '_';
+}
+
+function preserveStaticFieldText(value: string, existingHexIndicator: string | undefined): string {
+	return existingHexIndicator === undefined ? value.replaceAll('\\', '\\5C') : value;
 }
 
 function groupOccurrencesByField(
