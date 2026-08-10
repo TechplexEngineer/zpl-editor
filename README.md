@@ -34,6 +34,79 @@ npm install zpl-editor
 <ZPLEditor bind:width bind:height bind:dpi bind:zpl />
 ```
 
+## Placeholder authoring and CSV merge
+
+Use placeholders to turn a ZPL label into a reusable template. A placeholder is written as
+`{{name}}`, where `name` must match the exact regular expression
+`/^[A-Za-z_][A-Za-z0-9_-]*$/`: it starts with a letter or underscore, followed by letters,
+numbers, underscores, or hyphens.
+
+The editor can insert placeholders only into selected text and supported barcode data. Template
+analysis rejects a placeholder in other ZPL placements, malformed delimiters, and invalid names.
+Pass `onTemplateAnalysis` to receive the current `TemplateAnalysis` whenever the editor updates
+the generated template, including named, location-aware diagnostics that should prevent a merge.
+
+```svelte
+<script lang="ts">
+	import { ZPLEditor, type TemplateAnalysis } from 'zpl-editor';
+
+	let templateAnalysis: TemplateAnalysis;
+</script>
+
+<ZPLEditor onTemplateAnalysis={(analysis) => (templateAnalysis = analysis)} />
+```
+
+CSV headers are never mapped automatically, even when a header and placeholder have the same
+name. Choose a provider explicitly for every discovered placeholder: a CSV column, a fixed
+literal, or a blank value. Empty CSV cells and empty fixed literals are valid values. Rendering
+produces one `.zpl` file per valid CSV row; invalid rows are reported independently, so the valid
+rows remain available as individual downloads.
+
+### Merge API
+
+```ts
+import { analyzeTemplate, parseCsv, renderCsvRows, type PlaceholderMapping } from 'zpl-editor';
+
+const template = `^XA
+^FO40,40^A0N,30,30^FDItem: {{sku}}^FS
+^FO40,90^BCN,80,Y,N,N^FD{{lot-code}}^FS
+^FO40,190^A0N,24,24^FD{{note}}^FS
+^FO40,230^A0N,24,24^FD{{optionalField}}^FS
+^XZ`;
+
+const analysis = analyzeTemplate(template);
+if (analysis.diagnostics.length > 0) {
+	throw new Error(analysis.diagnostics.map((diagnostic) => diagnostic.message).join(' '));
+}
+
+const csv = parseCsv(`sku,lot\nA-100,LOT-42\nB-200,LOT-43\n`);
+const mapping: PlaceholderMapping = {
+	sku: { kind: 'csv-column', column: 'sku' },
+	'lot-code': { kind: 'csv-column', column: 'lot' },
+	note: { kind: 'literal', value: '' },
+	optionalField: { kind: 'blank' }
+};
+
+const result = renderCsvRows(template, csv, mapping);
+
+if (result.errors.length > 0) {
+	for (const error of result.errors) {
+		console.error(`Row ${error.rowNumber}: ${error.message}`);
+	}
+} else {
+	for (const label of result.generated) {
+		console.log(label.filename, label.zpl);
+	}
+}
+```
+
+### V1 scope
+
+V1 intentionally does not create a combined download, batch ZPL file, ZIP archive, printer
+discovery, or print action. It also does not provide date-based value providers such as
+`currentDate` or `dateOffset`; these would be future provider variants, not new placeholder
+syntax.
+
 ## Component API
 
 The exported component is available as both the default export and a named export:
