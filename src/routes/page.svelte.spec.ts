@@ -4,6 +4,15 @@ import { render } from 'vitest-browser-svelte';
 import Page from './+page.svelte';
 
 describe('ZPL Editor Page', () => {
+	it('links to the isolated CSV merge example without rendering its upload controls', async () => {
+		render(Page);
+
+		const mergeLink = page.getByRole('link', { name: 'CSV Merge Example' });
+		await expect.element(mergeLink).toHaveAttribute('href', '/merge');
+		await expect.element(page.getByLabelText('Upload CSV')).not.toBeInTheDocument();
+		await expect.element(page.getByLabelText('Barcode Value:')).toBeInTheDocument();
+	});
+
 	it('keeps the same canvas element instance when switching tabs', async () => {
 		render(Page);
 

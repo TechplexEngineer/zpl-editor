@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import ZPLEditor from '$lib/ZPLEditor.svelte';
 
 	let labelWidth = $state(4.0);
@@ -41,6 +42,7 @@
 		</div>
 
 		<div class="view-tabs">
+			<a class="merge-link" href={resolve('/merge')}>CSV Merge Example</a>
 			<button
 				class="tab-btn"
 				class:active={activeTab === 'editor'}
@@ -179,7 +181,14 @@
 
 	.view-tabs {
 		display: flex;
+		align-items: center;
 		gap: 0.4rem;
+	}
+
+	.merge-link {
+		color: #bfdbfe;
+		font-size: 0.8rem;
+		white-space: nowrap;
 	}
 
 	.main-content {
