@@ -25,7 +25,7 @@ describe('ZPL Compiler Utility Functions', () => {
 
 	it('formats text ZPL with rotation orientation', () => {
 		const zpl = formatTextZPL({ x: 100, y: 150, text: 'Hello', height: 36, width: 36, angle: 90 });
-		expect(zpl).toBe('^FO100,150^A0R,36,36^FDHello^FS\r\n');
+		expect(zpl).toBe('^FO100,150^A0R,36^FDHello^FS\r\n');
 	});
 
 	it('formats stretched text ZPL correctly', () => {

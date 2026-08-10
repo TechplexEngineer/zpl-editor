@@ -96,6 +96,9 @@
 			if (obj && (obj as any).zplType === 'line') {
 				centerLine(obj as fabric.Line);
 			}
+			if (obj && (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text')) {
+				(obj as any).hasZplBlockWidth = true;
+			}
 			updateZPL();
 		});
 		fabricCanvas.on('object:added', updateZPL);
@@ -628,6 +631,13 @@
 
 	function addParsedText(el: ParsedText) {
 		if (!fabricCanvas) return;
+		
+		const tempText = new fabric.Text(el.text, {
+			fontSize: el.fontHeight,
+			fontFamily: 'Helvetica, Arial, sans-serif'
+		});
+		const naturalWidth = tempText.width || (el.text.length * el.fontHeight * 0.6);
+
 		const textObj = new fabric.Textbox(el.text, {
 			left: el.x,
 			top: el.y,
@@ -637,9 +647,14 @@
 			snapAngle: 90,
 			angle: el.angle,
 			textAlign: el.textAlign as any,
-			width: el.blockWidth !== null ? el.blockWidth : undefined
+			width: el.blockWidth !== null ? el.blockWidth : naturalWidth,
+			...(el.fontWidth !== null ? { scaleX: el.fontWidth / el.fontHeight } : {}),
+			globalCompositeOperation: el.reversePrint ? 'difference' : 'source-over'
 		});
 		(textObj as any).zplType = 'text';
+		(textObj as any).hasZplBlockWidth = el.blockWidth !== null;
+		(textObj as any).hasZplFontWidth = el.fontWidth !== null;
+		(textObj as any).reversePrint = el.reversePrint;
 		fabricCanvas.add(textObj);
 	}
 
@@ -653,16 +668,19 @@
 			width: el.width,
 			height: el.height,
 			fill: 'transparent',
-			stroke: '#000000',
+			stroke: el.reversePrint ? '#FFFFFF' : '#000000',
 			strokeWidth: el.thickness,
 			strokeUniform: true,
 			noScaleCache: false,
 			snapAngle: 90,
 			rx,
-			ry: rx
+			ry: rx,
+			angle: el.angle,
+			globalCompositeOperation: el.reversePrint ? 'difference' : 'source-over'
 		});
 		(rectObj as any).zplType = 'rectangle';
 		(rectObj as any).zplRounding = roundingVal;
+		(rectObj as any).reversePrint = el.reversePrint;
 		fabricCanvas.add(rectObj);
 	}
 
@@ -741,17 +759,23 @@
 		const dataUrl = await renderBarcodeDataUrl(el.data, el.format);
 		await new Promise<void>((resolve) => {
 			fabric.Image.fromURL(dataUrl, (img) => {
+				const scale = el.height / (img.height || 1);
 				img.set({
 					left: el.x,
 					top: el.y,
 					snapAngle: 90,
 					lockUniScaling: true,
-					angle: el.angle
+					angle: el.angle,
+					scaleX: scale,
+					scaleY: scale,
+					globalCompositeOperation: el.reversePrint ? 'difference' : 'source-over'
 				});
 				img.setControlsVisibility({ mt: false, mb: false, ml: false, mr: false });
 				(img as any).zplType = 'barcode';
 				(img as any).zplData = el.data;
 				(img as any).barcodeFormat = el.format;
+				(img as any).byWidth = el.byWidth || 2;
+				(img as any).reversePrint = el.reversePrint;
 				fabricCanvas?.add(img);
 				resolve();
 			});

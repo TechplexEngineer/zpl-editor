@@ -9,7 +9,7 @@ describe('parseZPL – ^CF (Change Font)', () => {
 		const el = result.elements[0] as ParsedText;
 		expect(el.type).toBe('text');
 		expect(el.fontHeight).toBe(60);
-		expect(el.fontWidth).toBe(60); // width defaults to height when omitted
+		expect(el.fontWidth).toBe(null); // width is omitted
 	});
 
 	it('applies ^CF with explicit width', () => {
@@ -23,7 +23,7 @@ describe('parseZPL – ^CF (Change Font)', () => {
 		const result = parseZPL('^XA^CFA,30^FO50,50^FDHello^FS^XZ');
 		const el = result.elements[0] as ParsedText;
 		expect(el.fontHeight).toBe(30);
-		expect(el.fontWidth).toBe(30);
+		expect(el.fontWidth).toBe(null);
 	});
 
 	it('^CF changes persist across multiple fields', () => {
@@ -59,7 +59,7 @@ describe('parseZPL – ^CF (Change Font)', () => {
 		const result = parseZPL('^XA^FO50,50^FDHello^FS^XZ');
 		const el = result.elements[0] as ParsedText;
 		expect(el.fontHeight).toBe(36);
-		expect(el.fontWidth).toBe(36);
+		expect(el.fontWidth).toBe(null);
 	});
 
 	it('parses the full sample label without mangling text', () => {

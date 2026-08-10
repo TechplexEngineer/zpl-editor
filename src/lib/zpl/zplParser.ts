@@ -10,10 +10,11 @@ export interface ParsedText {
 	y: number;
 	text: string;
 	fontHeight: number;
-	fontWidth: number;
+	fontWidth: number | null;
 	angle: number;
 	textAlign: string;
 	blockWidth: number | null;
+	reversePrint?: boolean;
 }
 
 export interface ParsedRectangle {
@@ -24,6 +25,9 @@ export interface ParsedRectangle {
 	height: number;
 	thickness: number;
 	rounding: number;
+	lineColor: string;
+	angle: number;
+	reversePrint?: boolean;
 }
 
 export interface ParsedCircle {
@@ -62,6 +66,8 @@ export interface ParsedBarcode {
 	width: number;
 	height: number;
 	angle: number;
+	byWidth?: number;
+	reversePrint?: boolean;
 }
 
 export type ParsedElement =
@@ -155,6 +161,8 @@ const CANVAS_COMMANDS = new Set([
 	'BX',                   // DataMatrix
 	'BC',                   // Code 128
 	'B3',                   // Code 39
+	'A',
+	'FR'
 ]);
 
 // ---------------------------------------------------------------------------
@@ -183,30 +191,33 @@ export function parseZPL(zpl: string): ParseResult {
 	let curY = 0;
 	// Global default font state (set by ^CF, persists across fields)
 	let cfHeight = 36;
-	let cfWidth = 0; // 0 means "same as height" per ZPL spec
+	let cfWidth: number | null = null;
 	let fontHeight = cfHeight;
-	let fontWidth = cfWidth || cfHeight;
+	let fontWidth: number | null = cfWidth;
 	let fontOrient = 'N';
 	let hasFB = false;
 	let blockWidth: number | null = null;
 	let blockJust = 'L';
 	let barcodeFormat: BarcodeFormat | null = null;
-	let barcodeHeight = 100;
+	let byHeight = 100;
+	let barcodeHeight = byHeight;
 	let barcodeWidth = 100;
 	let barcodeOrient = 'N';
 	let byWidth = 2; // bar width from ^BY, used to estimate rendered width
+	let reversePrint = false;
 
 	function resetFieldState() {
 		fontHeight = cfHeight;
-		fontWidth = cfWidth || cfHeight;
+		fontWidth = cfWidth;
 		fontOrient = 'N';
 		hasFB = false;
 		blockWidth = null;
 		blockJust = 'L';
 		barcodeFormat = null;
-		barcodeHeight = 100;
+		barcodeHeight = byHeight;
 		barcodeWidth = 100;
 		barcodeOrient = 'N';
+		reversePrint = false;
 	}
 
 	for (const token of tokens) {
@@ -240,27 +251,29 @@ export function parseZPL(zpl: string): ParseResult {
 
 		// --- change font (default font for subsequent fields) ---
 		if (cmd === 'CF') {
-			// ^CF<font>,<h>,<w>  — font is 0–9 or A–Z; height and width are optional
-			const m = token.match(/^CF[0-9A-Z]?,?(\d*),?(\d*)/);
-			if (m && m[1]) {
-				cfHeight = parseInt(m[1]);
-				cfWidth = m[2] ? parseInt(m[2]) : 0;
-				// Also update current field font so a ^CF before ^FO still applies
-				fontHeight = cfHeight;
-				fontWidth = cfWidth || cfHeight;
+			const m = token.match(/^CF([A-Z0-9]),?(\d+),?(\d*)/);
+			if (m) {
+				if (m[2]) cfHeight = parseInt(m[2]);
+				cfWidth = m[3] ? parseInt(m[3]) : null;
 			}
 			continue;
 		}
 
-		// --- scalable font ---
-		if (cmd === 'A0') {
-			// ^A0<orient>,<h>,<w>
-			const m = token.match(/^A0([NRIB]?),?(\d+),?(\d+)/);
+		// --- field font ---
+		if (cmd.charAt(0) === 'A') {
+			// ^Afo,h,w
+			const m = token.match(/^A([A-Z0-9])([NRIB]),?(\d*),?(\d*)/);
 			if (m) {
-				fontOrient = m[1] || 'N';
-				fontHeight = parseInt(m[2]);
-				fontWidth = parseInt(m[3]);
+				fontOrient = m[2] || 'N';
+				if (m[3]) fontHeight = parseInt(m[3]);
+				fontWidth = m[4] ? parseInt(m[4]) : null;
 			}
+			continue;
+		}
+
+		// --- field reverse ---
+		if (cmd === 'FR') {
+			reversePrint = true;
 			continue;
 		}
 
@@ -278,8 +291,11 @@ export function parseZPL(zpl: string): ParseResult {
 
 		// --- bar width modifier ---
 		if (cmd === 'BY') {
-			const m = token.match(/^BY(\d+)/);
-			if (m) byWidth = parseInt(m[1]);
+			const m = token.match(/^BY(\d+),?([\d.]*),?(\d*)/);
+			if (m) {
+				if (m[1]) byWidth = parseInt(m[1]);
+				if (m[3]) byHeight = parseInt(m[3]);
+			}
 			continue;
 		}
 
@@ -350,6 +366,8 @@ export function parseZPL(zpl: string): ParseResult {
 					width: barcodeWidth,
 					height: barcodeHeight,
 					angle: orientToAngle(barcodeOrient),
+					byWidth: byWidth,
+					reversePrint
 				});
 			} else {
 				result.elements.push({
@@ -362,6 +380,7 @@ export function parseZPL(zpl: string): ParseResult {
 					angle: orientToAngle(fontOrient),
 					textAlign: hasFB ? justToAlign(blockJust) : 'left',
 					blockWidth: hasFB ? blockWidth : null,
+					reversePrint
 				});
 			}
 			barcodeFormat = null; // consume
@@ -381,6 +400,9 @@ export function parseZPL(zpl: string): ParseResult {
 					height: parseInt(m[2]),
 					thickness: parseInt(m[3]),
 					rounding: m[4] ? parseInt(m[4]) : 0,
+					lineColor: 'B',
+					angle: orientToAngle(fontOrient),
+					reversePrint
 				});
 			}
 			continue;

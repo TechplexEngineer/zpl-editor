@@ -33,39 +33,39 @@ export function formatTextZPL(opts: {
 	angle: number;
 	textAlign?: string;
 	blockWidth?: number;
+	hasZplBlockWidth?: boolean;
+	hasZplFontWidth?: boolean;
 }): string {
 	const orient = getZPLOrientation(opts.angle);
 	const h = Math.round(opts.height);
-	const w = Math.round(opts.width);
-	let zpl = `^FO${Math.round(opts.x)},${Math.round(opts.y)}^A0${orient},${h},${w}`;
+	let fontCmd = `^FO${Math.round(opts.x)},${Math.round(opts.y)}^A0${orient},${h}`;
+	
+	// Only output width if it was explicitly provided or scaled (difference > 1)
+	if (opts.hasZplFontWidth || Math.abs(opts.width - opts.height) > 1) {
+		fontCmd += `,${Math.round(opts.width)}`;
+	}
 
 	if (opts.textAlign && opts.blockWidth !== undefined) {
 		let just = 'L';
 		let useFB = false;
-		
 		if (opts.textAlign === 'center') { just = 'C'; useFB = true; }
 		else if (opts.textAlign === 'right') { just = 'R'; useFB = true; }
 		else if (opts.textAlign === 'justify') { just = 'J'; useFB = true; }
 		else if (opts.textAlign === 'left') { 
-			// If it's left aligned but we have a defined block width, we might want to use FB 
-			// but only if it differs significantly from normal text width. 
-			// To keep "typical text behavior" by default as requested, we'll only use FB
-			// for Left align if it has multiple lines, or we can just always use FB for textboxes.
-			// The user said "Lets expose the typical text behavior then add the FB behavior".
-			// We'll emit FB if explicitly set to L, C, R, J. Wait, in Fabric it's always one of these.
-			// Let's use FB whenever the user has customized the width (so it wraps) or if aligned differently.
 			just = 'L'; 
-			useFB = true; 
+			if (opts.hasZplBlockWidth && opts.blockWidth && opts.blockWidth > 0) {
+				useFB = true; 
+			}
 		}
 
 		if (useFB) {
-			const bw = Math.round(opts.blockWidth);
-			zpl += `^FB${bw},100,0,${just},0`;
+			const bw = Math.round(opts.blockWidth || 0);
+			fontCmd += `^FB${bw},100,0,${just},0`;
 		}
 	}
 
-	zpl += `^FD${opts.text}^FS\r\n`;
-	return zpl;
+	fontCmd += `^FD${opts.text}^FS\r\n`;
+	return fontCmd;
 }
 
 export function formatRectZPL(opts: {
@@ -96,6 +96,7 @@ export function formatBarcodeZPL(opts: {
 	width: number;
 	height: number;
 	angle: number;
+	byWidth?: number;
 }): string {
 	const orient = getZPLOrientation(opts.angle);
 	const x = Math.round(opts.x);
@@ -108,9 +109,9 @@ export function formatBarcodeZPL(opts: {
 		const height = Math.max(2, Math.min(10, Math.round(opts.height / 20)));
 		return `^FO${x},${y}^BX${orient},${height},200^FD${opts.text}^FS\r\n`;
 	} else if (opts.format === 'CODE128') {
-		return `^FO${x},${y}^BY2^BC${orient},${Math.round(opts.height)},Y,N,N^FD${opts.text}^FS\r\n`;
+		return `^FO${x},${y}^BY${opts.byWidth || 2}^BC${orient},${Math.round(opts.height)},Y,N,N^FD${opts.text}^FS\r\n`;
 	} else {
-		return `^FO${x},${y}^BY2^B3${orient},N,${Math.round(opts.height)},Y,N^FD${opts.text}^FS\r\n`;
+		return `^FO${x},${y}^BY${opts.byWidth || 2}^B3${orient},N,${Math.round(opts.height)},Y,N^FD${opts.text}^FS\r\n`;
 	}
 }
 
@@ -128,7 +129,8 @@ export function compileFabricCanvasToZPL(canvas: fabric.Canvas, config: LabelCon
 
 		if (customType === 'text' || obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
 			const textObj = obj as fabric.Textbox;
-			zpl += formatTextZPL({
+			const fr = (obj as any).reversePrint ? '^FR' : '';
+			zpl += `${fr}${formatTextZPL({
 				x,
 				y,
 				text: textObj.text || '',
@@ -136,19 +138,14 @@ export function compileFabricCanvasToZPL(canvas: fabric.Canvas, config: LabelCon
 				width: (textObj.fontSize || 36) * (textObj.scaleX || 1),
 				angle,
 				textAlign: textObj.textAlign,
-				blockWidth: (textObj.width || 0) * (textObj.scaleX || 1)
-			});
+				blockWidth: (textObj.width || 0) * (textObj.scaleX || 1),
+				hasZplBlockWidth: (textObj as any).hasZplBlockWidth === true,
+				hasZplFontWidth: (textObj as any).hasZplFontWidth === true
+			})}`;
 		} else if (customType === 'rectangle' || obj.type === 'rect') {
 			const rectObj = obj as fabric.Rect;
-			zpl += formatRectZPL({
-				x,
-				y,
-				width: (rectObj.width || 100) * (rectObj.scaleX || 1),
-				height: (rectObj.height || 50) * (rectObj.scaleY || 1),
-				strokeWidth: rectObj.strokeWidth || 2,
-				angle,
-				rounding: (rectObj as any).zplRounding || 0
-			});
+			const fr = (obj as any).reversePrint ? '^FR' : '';
+			zpl += `^FO${Math.round(x)},${Math.round(y)}${fr}^GB${Math.round((rectObj.width || 0) * (rectObj.scaleX || 1))},${Math.round((rectObj.height || 0) * (rectObj.scaleY || 1))},${Math.round(rectObj.strokeWidth || 1)},B,${(obj as any).zplRounding || 0}^FS\r\n`;
 		} else if (customType === 'circle' || obj.type === 'circle') {
 			const circleObj = obj as fabric.Circle;
 			const radius = circleObj.radius || 50;
@@ -189,15 +186,19 @@ export function compileFabricCanvasToZPL(canvas: fabric.Canvas, config: LabelCon
 
 			zpl += `^FO${Math.round(minX)},${Math.round(minY)}^GD${w},${h},${t},B,${orientation}^FS\r\n`;
 		} else if (customType === 'barcode') {
-			zpl += formatBarcodeZPL({
+			const fr = (obj as any).reversePrint ? '^FR' : '';
+			const barcodeZPL = formatBarcodeZPL({
 				x,
 				y,
 				text: (obj as any).zplData || 'BARCODE',
 				format: (obj as any).barcodeFormat || 'QR',
 				width: (obj.width || 100) * (obj.scaleX || 1),
 				height: (obj.height || 100) * (obj.scaleY || 1),
-				angle
+				angle,
+				byWidth: (obj as any).byWidth || 2
 			});
+			// formatBarcodeZPL includes ^FO, so inject ^FR if needed.
+			zpl += barcodeZPL.replace('^FO' + Math.round(x) + ',' + Math.round(y), '^FO' + Math.round(x) + ',' + Math.round(y) + fr);
 		} else if ((obj as any).zplGFData) {
 			zpl += `^FO${Math.round(x)},${Math.round(y)}${(obj as any).zplGFData}^FS\r\n`;
 		}
