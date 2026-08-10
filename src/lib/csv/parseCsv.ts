@@ -83,7 +83,8 @@ export function parseCsv(source: string): CsvDocument {
 	const seenHeaders = new Set<string>();
 
 	for (const header of headers) {
-		if (header.length === 0) throw new CsvParseError(headerRecord.rowNumber, 'Header cannot be empty');
+		if (header.length === 0)
+			throw new CsvParseError(headerRecord.rowNumber, 'Header cannot be empty');
 		if (seenHeaders.has(header)) {
 			throw new CsvParseError(headerRecord.rowNumber, `Duplicate header "${header}"`);
 		}

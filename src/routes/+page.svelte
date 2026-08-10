@@ -84,9 +84,7 @@
 				<div class="zpl-header">
 					<h2>Real-Time Generated ZPL Code</h2>
 					<div class="zpl-actions">
-						<button class="download-btn" onclick={downloadZPL}>
-							Download ZPL
-						</button>
+						<button class="download-btn" onclick={downloadZPL}> Download ZPL </button>
 						<button class="copy-btn" onclick={() => navigator.clipboard.writeText(zplOutput)}>
 							Copy ZPL
 						</button>

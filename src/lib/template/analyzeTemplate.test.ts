@@ -4,8 +4,7 @@ import { analyzeTemplate, isPlaceholderName } from './analyzeTemplate.js';
 describe('analyzeTemplate', () => {
 	it('discovers unique names while retaining every text and barcode occurrence', () => {
 		const zpl =
-			'^XA^FO1,1^A0N,20,20^FDSKU {{sku}}^FS' +
-			'^FO1,30^BCN,60,Y,N,N^FD{{sku}}-{{lot-code}}^FS^XZ';
+			'^XA^FO1,1^A0N,20,20^FDSKU {{sku}}^FS' + '^FO1,30^BCN,60,Y,N,N^FD{{sku}}-{{lot-code}}^FS^XZ';
 		const result = analyzeTemplate(zpl);
 
 		expect(result.placeholders).toEqual(['sku', 'lot-code']);

@@ -1,9 +1,7 @@
 import type { BarcodeFormat } from '../zpl/types.js';
 
 export type PlaceholderName = string;
-export type PlaceholderContext =
-	| { kind: 'text' }
-	| { kind: 'barcode'; format: BarcodeFormat };
+export type PlaceholderContext = { kind: 'text' } | { kind: 'barcode'; format: BarcodeFormat };
 
 export interface PlaceholderOccurrence {
 	name: PlaceholderName;
@@ -16,10 +14,7 @@ export interface PlaceholderOccurrence {
 	context: PlaceholderContext;
 }
 
-export type TemplateDiagnosticCode =
-	| 'MALFORMED_TOKEN'
-	| 'INVALID_NAME'
-	| 'UNSUPPORTED_PLACEMENT';
+export type TemplateDiagnosticCode = 'MALFORMED_TOKEN' | 'INVALID_NAME' | 'UNSUPPORTED_PLACEMENT';
 
 export interface TemplateDiagnostic {
 	code: TemplateDiagnosticCode;
@@ -37,9 +32,7 @@ export interface TemplateAnalysis {
 }
 
 export type ValueProvider =
-	| { kind: 'csv-column'; column: string }
-	| { kind: 'literal'; value: string }
-	| { kind: 'blank' };
+	{ kind: 'csv-column'; column: string } | { kind: 'literal'; value: string } | { kind: 'blank' };
 
 export type PlaceholderMapping = Record<string, ValueProvider>;
 

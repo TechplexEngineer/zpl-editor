@@ -22,8 +22,6 @@ describe('parseCsv', () => {
 		['SKU,Lot\nA', 2, 'Expected 2 columns but found 1'],
 		['SKU\n"A', 2, 'Unterminated quoted field']
 	])('rejects invalid CSV', (source, rowNumber, message) => {
-		expect(() => parseCsv(source)).toThrowError(
-			expect.objectContaining({ rowNumber, message })
-		);
+		expect(() => parseCsv(source)).toThrowError(expect.objectContaining({ rowNumber, message }));
 	});
 });

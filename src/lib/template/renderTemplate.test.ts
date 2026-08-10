@@ -69,9 +69,7 @@ describe('renderTemplateRow', () => {
 			{}
 		);
 
-		expect(rendered).toBe(
-			String.raw`^XA^FO1,1^A0N,20,20^FH\^FDStatic \5C5E A\5EB^FS^XZ`
-		);
+		expect(rendered).toBe(String.raw`^XA^FO1,1^A0N,20,20^FH\^FDStatic \5C5E A\5EB^FS^XZ`);
 	});
 
 	it('uses an existing custom field hex indicator for replacement values', () => {

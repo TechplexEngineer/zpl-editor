@@ -78,7 +78,8 @@ export function analyzeTemplate(zpl: string): TemplateAnalysis {
 		if (!isPlaceholderName(token.name)) {
 			diagnostics.push({
 				code: 'INVALID_NAME',
-				message: 'Placeholder names must start with a letter or underscore and contain only letters, numbers, underscores, or hyphens.',
+				message:
+					'Placeholder names must start with a letter or underscore and contain only letters, numbers, underscores, or hyphens.',
 				start: tokenStart,
 				end: token.end,
 				name: token.name,
@@ -162,8 +163,7 @@ function classifyField(commands: string): PlaceholderContext | undefined {
 function sameContext(left: PlaceholderContext, right: PlaceholderContext): boolean {
 	return (
 		left.kind === right.kind &&
-		(left.kind !== 'barcode' ||
-			(right.kind === 'barcode' && left.format === right.format))
+		(left.kind !== 'barcode' || (right.kind === 'barcode' && left.format === right.format))
 	);
 }
 

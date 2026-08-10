@@ -68,10 +68,12 @@
 ### Task 1: Define the stable template and merge contracts
 
 **Files:**
+
 - Create: `src/lib/template/types.ts`
 - Test: `src/lib/zpl/types.test.ts`
 
 **Interfaces:**
+
 - Consumes: existing `BarcodeFormat` from `src/lib/zpl/types.ts`.
 - Produces: `PlaceholderContext`, `PlaceholderOccurrence`, `TemplateDiagnostic`, `TemplateAnalysis`, `ValueProvider`, `PlaceholderMapping`, `CsvDocument`, `MappingValidationError`, `RowRenderError`, `GeneratedLabel`, and `BatchRenderResult` used verbatim by all later tasks.
 
@@ -80,22 +82,25 @@
 Extend `src/lib/zpl/types.test.ts` with a runtime assertion whose assignment forces TypeScript to verify the public shapes:
 
 ```ts
-import type {
-	PlaceholderOccurrence,
-	ValueProvider,
-	BatchRenderResult
-} from '../template/types.js';
+import type { PlaceholderOccurrence, ValueProvider, BatchRenderResult } from '../template/types.js';
 
 it('keeps placeholder and provider contracts discriminated', () => {
 	const occurrence: PlaceholderOccurrence = {
-		name: 'sku', token: '{{sku}}', start: 12, end: 19,
-		fieldStart: 8, fieldEnd: 22, locationId: 'field-1',
+		name: 'sku',
+		token: '{{sku}}',
+		start: 12,
+		end: 19,
+		fieldStart: 8,
+		fieldEnd: 22,
+		locationId: 'field-1',
 		context: { kind: 'barcode', format: 'CODE128' }
 	};
 	const provider: ValueProvider = { kind: 'csv-column', column: 'SKU' };
 	const result: BatchRenderResult = { generated: [], errors: [] };
 	expect([occurrence.context.kind, provider.kind, result.errors]).toEqual([
-		'barcode', 'csv-column', []
+		'barcode',
+		'csv-column',
+		[]
 	]);
 });
 ```
@@ -114,9 +119,7 @@ Create `src/lib/template/types.ts` with these exact contracts:
 import type { BarcodeFormat } from '../zpl/types.js';
 
 export type PlaceholderName = string;
-export type PlaceholderContext =
-	| { kind: 'text' }
-	| { kind: 'barcode'; format: BarcodeFormat };
+export type PlaceholderContext = { kind: 'text' } | { kind: 'barcode'; format: BarcodeFormat };
 
 export interface PlaceholderOccurrence {
 	name: PlaceholderName;
@@ -129,10 +132,7 @@ export interface PlaceholderOccurrence {
 	context: PlaceholderContext;
 }
 
-export type TemplateDiagnosticCode =
-	| 'MALFORMED_TOKEN'
-	| 'INVALID_NAME'
-	| 'UNSUPPORTED_PLACEMENT';
+export type TemplateDiagnosticCode = 'MALFORMED_TOKEN' | 'INVALID_NAME' | 'UNSUPPORTED_PLACEMENT';
 
 export interface TemplateDiagnostic {
 	code: TemplateDiagnosticCode;
@@ -150,9 +150,7 @@ export interface TemplateAnalysis {
 }
 
 export type ValueProvider =
-	| { kind: 'csv-column'; column: string }
-	| { kind: 'literal'; value: string }
-	| { kind: 'blank' };
+	{ kind: 'csv-column'; column: string } | { kind: 'literal'; value: string } | { kind: 'blank' };
 
 export type PlaceholderMapping = Record<string, ValueProvider>;
 
@@ -204,10 +202,12 @@ git commit -m "feat: define placeholder merge contracts"
 ### Task 2: Analyze strict named tokens and ZPL placement
 
 **Files:**
+
 - Create: `src/lib/template/analyzeTemplate.ts`
 - Create: `src/lib/template/analyzeTemplate.test.ts`
 
 **Interfaces:**
+
 - Consumes: `TemplateAnalysis`, `PlaceholderOccurrence`, and `BarcodeFormat`.
 - Produces: `PLACEHOLDER_NAME_PATTERN`, `isPlaceholderName(name: string): boolean`, and `analyzeTemplate(zpl: string): TemplateAnalysis`.
 
@@ -219,8 +219,8 @@ import { analyzeTemplate } from './analyzeTemplate.js';
 
 describe('analyzeTemplate', () => {
 	it('discovers unique names while retaining every text and barcode occurrence', () => {
-		const zpl = '^XA^FO1,1^A0N,20,20^FDSKU {{sku}}^FS' +
-			'^FO1,30^BCN,60,Y,N,N^FD{{sku}}-{{lot-code}}^FS^XZ';
+		const zpl =
+			'^XA^FO1,1^A0N,20,20^FDSKU {{sku}}^FS' + '^FO1,30^BCN,60,Y,N,N^FD{{sku}}-{{lot-code}}^FS^XZ';
 		const result = analyzeTemplate(zpl);
 		expect(result.placeholders).toEqual(['sku', 'lot-code']);
 		expect(result.occurrences.map(({ name, context }) => [name, context])).toEqual([
@@ -299,10 +299,12 @@ git commit -m "feat: discover and validate zpl placeholders"
 ### Task 3: Add editor insertion and preview helpers
 
 **Files:**
+
 - Create: `src/lib/template/placeholderPreview.ts`
 - Create: `src/lib/template/placeholderPreview.test.ts`
 
 **Interfaces:**
+
 - Consumes: `isPlaceholderName()` and canonical strings stored in Fabric `Textbox.text` / barcode `zplData`.
 - Produces: `insertPlaceholder(source: string, name: string, start?: number, end?: number): string`, `placeholderPreviewText(source: string): string`, and `placeholderStyleRanges(source: string): Array<{ start: number; end: number }>`.
 
@@ -318,12 +320,15 @@ it('uses recognizable preview text while leaving canonical input unchanged', () 
 	expect(placeholderPreviewText(source)).toBe('Lot [lot] / [sku]');
 	expect(source).toBe('Lot {{lot}} / {{sku}}');
 	expect(placeholderStyleRanges(source)).toEqual([
-		{ start: 4, end: 11 }, { start: 14, end: 21 }
+		{ start: 4, end: 11 },
+		{ start: 14, end: 21 }
 	]);
 });
 
 it('rejects invalid names before insertion', () => {
-	expect(() => insertPlaceholder('SKU', '9 sku', 3, 3)).toThrow('letters, digits, underscores, or hyphens');
+	expect(() => insertPlaceholder('SKU', '9 sku', 3, 3)).toThrow(
+		'letters, digits, underscores, or hyphens'
+	);
 });
 ```
 
@@ -353,12 +358,14 @@ git commit -m "feat: add placeholder insertion and preview helpers"
 ### Task 4: Preserve tokens and add placeholder authoring to `ZPLEditor`
 
 **Files:**
+
 - Modify: `src/lib/zpl/zplCompiler.ts:30-133`
 - Modify: `src/lib/zpl/zplCompiler.test.ts`
 - Modify: `src/lib/ZPLEditor.svelte:1-159,484-617,801-883`
 - Modify: `src/lib/ZPLEditor.svelte.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `analyzeTemplate`, `insertPlaceholder`, `placeholderPreviewText`, `placeholderStyleRanges`, and `TemplateAnalysis`.
 - Produces: optional editor prop `onTemplateAnalysis?: (analysis: TemplateAnalysis) => void`; exact `{{name}}` compiler output; text and barcode inspector controls labeled `Placeholder name` and `Insert placeholder`.
 
@@ -368,13 +375,35 @@ Add two objects to a mock canvas and assert the literal tokens survive compilati
 
 ```ts
 it('preserves named tokens in text and barcode field data', () => {
-	const canvas = { getObjects: () => [
-		{ type: 'textbox', zplType: 'text', text: 'SKU {{sku}}', left: 1, top: 2,
-			fontSize: 20, width: 100, scaleX: 1, scaleY: 1, angle: 0 },
-		{ type: 'image', zplType: 'barcode', zplData: '{{sku}}-{{lot}}',
-			barcodeFormat: 'CODE128', left: 1, top: 30, width: 100, height: 40,
-			scaleX: 1, scaleY: 1, angle: 0 }
-	] } as any;
+	const canvas = {
+		getObjects: () => [
+			{
+				type: 'textbox',
+				zplType: 'text',
+				text: 'SKU {{sku}}',
+				left: 1,
+				top: 2,
+				fontSize: 20,
+				width: 100,
+				scaleX: 1,
+				scaleY: 1,
+				angle: 0
+			},
+			{
+				type: 'image',
+				zplType: 'barcode',
+				zplData: '{{sku}}-{{lot}}',
+				barcodeFormat: 'CODE128',
+				left: 1,
+				top: 30,
+				width: 100,
+				height: 40,
+				scaleX: 1,
+				scaleY: 1,
+				angle: 0
+			}
+		]
+	} as any;
 	const zpl = compileFabricCanvasToZPL(canvas, { widthInches: 2, heightInches: 1, dpi: 300 });
 	expect(zpl).toContain('^FDSKU {{sku}}^FS');
 	expect(zpl).toContain('^FD{{sku}}-{{lot}}^FS');
@@ -396,7 +425,7 @@ Expected: compiler preservation passes with current string serialization, while 
 Extend props and `updateZPL()`:
 
 ```ts
-onTemplateAnalysis = (_analysis: TemplateAnalysis) => {}
+onTemplateAnalysis = (_analysis: TemplateAnalysis) => {};
 // prop type: onTemplateAnalysis?: (analysis: TemplateAnalysis) => void
 
 const analysis = analyzeTemplate(generated);
@@ -445,10 +474,12 @@ git commit -m "feat: author named placeholders in the editor"
 ### Task 5: Parse simple header-row CSV deterministically
 
 **Files:**
+
 - Create: `src/lib/csv/parseCsv.ts`
 - Create: `src/lib/csv/parseCsv.test.ts`
 
 **Interfaces:**
+
 - Produces: `CsvParseError extends Error` with `rowNumber`; `parseCsv(source: string): CsvDocument`.
 - CSV rules: comma delimiter, RFC-style doubled quotes, quoted commas/newlines, LF or CRLF, no automatic whitespace trimming, UTF-8 BOM removed only from the first header, blank cells retained, trailing wholly blank record omitted.
 
@@ -499,12 +530,14 @@ git commit -m "feat: parse header row csv data"
 ### Task 6: Resolve typed providers and encode field data safely
 
 **Files:**
+
 - Create: `src/lib/template/providers.ts`
 - Create: `src/lib/template/providers.test.ts`
 - Create: `src/lib/template/encodeZplField.ts`
 - Create: `src/lib/template/encodeZplField.test.ts`
 
 **Interfaces:**
+
 - Produces: `ProviderResolutionError`, `resolveProvider(provider: ValueProvider, row: Record<string,string>): string`, `encodeZplFieldValue(value: string): string`, and `validateBarcodeValue(value: string, format: BarcodeFormat): string | undefined`.
 - Encoding contract: rendered fields use `^FH\`; UTF-8 bytes for `^`, `~`, `\`, CR, LF, and non-ASCII bytes are emitted as uppercase `\HH`; printable ASCII other than those three ZPL-significant characters remains literal.
 
@@ -514,8 +547,9 @@ git commit -m "feat: parse header row csv data"
 expect(resolveProvider({ kind: 'csv-column', column: 'SKU' }, { SKU: '' })).toBe('');
 expect(resolveProvider({ kind: 'literal', value: '^fixed~' }, {})).toBe('^fixed~');
 expect(resolveProvider({ kind: 'blank' }, {})).toBe('');
-expect(() => resolveProvider({ kind: 'csv-column', column: 'Missing' }, { SKU: 'A1' }))
-	.toThrow('CSV column "Missing" is not present in this row');
+expect(() => resolveProvider({ kind: 'csv-column', column: 'Missing' }, { SKU: 'A1' })).toThrow(
+	'CSV column "Missing" is not present in this row'
+);
 ```
 
 - [ ] **Step 2: Write failing encoding and symbology tests**
@@ -559,6 +593,7 @@ git commit -m "feat: resolve and safely encode merge values"
 ### Task 7: Render templates and isolate row failures
 
 **Files:**
+
 - Create: `src/lib/template/renderTemplate.ts`
 - Create: `src/lib/template/renderTemplate.test.ts`
 - Create: `src/lib/template/fixtures/inventory-template.zpl`
@@ -566,6 +601,7 @@ git commit -m "feat: resolve and safely encode merge values"
 - Create: `src/lib/template/fixtures/inventory.expected.ts`
 
 **Interfaces:**
+
 - Consumes: `analyzeTemplate`, `resolveProvider`, `encodeZplFieldValue`, `validateBarcodeValue`, `CsvDocument`, and `PlaceholderMapping`.
 - Produces: `MappingValidationError`, `validateMapping(analysis: TemplateAnalysis, mapping: Partial<PlaceholderMapping>, headers: string[]): MappingValidationError[]`, `renderTemplateRow(template: string, analysis: TemplateAnalysis, mapping: PlaceholderMapping, row: Record<string,string>): string`, and `renderCsvRows(template: string, csv: CsvDocument, mapping: PlaceholderMapping): BatchRenderResult`.
 
@@ -573,11 +609,19 @@ git commit -m "feat: resolve and safely encode merge values"
 
 ```ts
 const analysis = analyzeTemplate('^XA^FO1,1^A0N,20,20^FD{{sku}} {{lot}}^FS^XZ');
-expect(validateMapping(analysis, { sku: { kind: 'csv-column', column: 'SKU' } }, ['SKU']))
-	.toEqual([{ placeholder: 'lot', code: 'UNMAPPED', message: 'Choose a source for “lot”.' }]);
-expect(validateMapping(analysis, {
-	sku: { kind: 'csv-column', column: 'Missing' }, lot: { kind: 'blank' }
-}, ['SKU'])[0]?.code).toBe('MISSING_COLUMN');
+expect(validateMapping(analysis, { sku: { kind: 'csv-column', column: 'SKU' } }, ['SKU'])).toEqual([
+	{ placeholder: 'lot', code: 'UNMAPPED', message: 'Choose a source for “lot”.' }
+]);
+expect(
+	validateMapping(
+		analysis,
+		{
+			sku: { kind: 'csv-column', column: 'Missing' },
+			lot: { kind: 'blank' }
+		},
+		['SKU']
+	)[0]?.code
+).toBe('MISSING_COLUMN');
 ```
 
 - [ ] **Step 2: Write failing contextual-render tests**
@@ -587,8 +631,9 @@ Assert duplicate `{{sku}}` uses both resolve, literal `{{sku}}` text inside a pr
 ```ts
 expect(rendered).toContain('^FH\\^FDSKU A\\5EB\\7EC^FS');
 expect(rendered).not.toContain('{{sku}}');
-expect(renderTemplateRow(template, analysis, { sku: { kind: 'literal', value: '{{other}}' } }, {}))
-	.toContain('^FD{{other}}^FS');
+expect(
+	renderTemplateRow(template, analysis, { sku: { kind: 'literal', value: '{{other}}' } }, {})
+).toContain('^FD{{other}}^FS');
 ```
 
 - [ ] **Step 3: Write the mixed-success fixture test**
@@ -627,6 +672,7 @@ git commit -m "feat: render valid csv rows as individual zpl labels"
 ### Task 8: Build the standalone four-step merge example
 
 **Files:**
+
 - Create: `src/lib/components/CsvMergeExample.svelte`
 - Create: `src/lib/components/CsvMergeExample.svelte.spec.ts`
 - Create: `src/routes/merge/+page.svelte`
@@ -635,6 +681,7 @@ git commit -m "feat: render valid csv rows as individual zpl labels"
 - Modify: `src/routes/page.svelte.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `analyzeTemplate`, `parseCsv`, `validateMapping`, `renderTemplateRow`, `renderCsvRows`, and all mapping/result types.
 - Produces: isolated `/merge` workflow with template textarea/file load, CSV file input, one explicit mapping control per placeholder, representative preview, result summary, row errors, and individual download buttons.
 
@@ -707,10 +754,12 @@ git commit -m "feat: add standalone csv merge example"
 ### Task 9: Publish the library API and document the constrained feature
 
 **Files:**
+
 - Modify: `src/lib/index.ts`
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Consumes: completed public utility contracts.
 - Produces: package exports for `analyzeTemplate`, `isPlaceholderName`, `parseCsv`, `resolveProvider`, `validateMapping`, `renderTemplateRow`, `renderCsvRows`, and their public types.
 
@@ -724,10 +773,17 @@ export { parseCsv, CsvParseError } from './csv/parseCsv.js';
 export { resolveProvider, ProviderResolutionError } from './template/providers.js';
 export { validateMapping, renderTemplateRow, renderCsvRows } from './template/renderTemplate.js';
 export type {
-	PlaceholderContext, PlaceholderOccurrence, TemplateAnalysis, TemplateDiagnostic,
+	PlaceholderContext,
+	PlaceholderOccurrence,
+	TemplateAnalysis,
+	TemplateDiagnostic,
 	MappingValidationError,
-	ValueProvider, PlaceholderMapping, CsvDocument, RowRenderError,
-	GeneratedLabel, BatchRenderResult
+	ValueProvider,
+	PlaceholderMapping,
+	CsvDocument,
+	RowRenderError,
+	GeneratedLabel,
+	BatchRenderResult
 } from './template/types.js';
 ```
 

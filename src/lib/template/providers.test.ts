@@ -13,10 +13,10 @@ describe('resolveProvider', () => {
 
 	it('throws a provider resolution error for an absent CSV column', () => {
 		expect(() => resolveProvider({ kind: 'csv-column', column: 'Missing' }, { SKU: 'A1' })).toThrow(
-		'CSV column "Missing" is not present in this row'
-	);
+			'CSV column "Missing" is not present in this row'
+		);
 		expect(() => resolveProvider({ kind: 'csv-column', column: 'Missing' }, {})).toThrow(
-		ProviderResolutionError
-	);
+			ProviderResolutionError
+		);
 	});
 });

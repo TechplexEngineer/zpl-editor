@@ -10,8 +10,8 @@ const DEFAULT_BARCODE_DATA_URL =
 	'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 
 vi.mock('./zpl/barcodeRenderer.js', () => ({
-	renderBarcodeDataUrl: vi.fn(async () =>
-		'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+	renderBarcodeDataUrl: vi.fn(
+		async () => 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 	)
 }));
 
@@ -124,9 +124,9 @@ describe('ZPLEditor placeholder authoring', () => {
 		await page.getByLabelText('Placeholder name').fill('9sku');
 		await page.getByRole('button', { name: 'Insert placeholder' }).click();
 
-		await expect.element(page.getByRole('alert')).toHaveTextContent(
-			'Placeholder names must start with a letter or underscore'
-		);
+		await expect
+			.element(page.getByRole('alert'))
+			.toHaveTextContent('Placeholder names must start with a letter or underscore');
 		expect(onChange).toHaveBeenCalledTimes(callsBeforeInsertion);
 		expect(onChange).not.toHaveBeenCalledWith(expect.stringContaining('{{9sku}}'));
 	});
@@ -137,9 +137,7 @@ describe('ZPLEditor placeholder authoring', () => {
 
 		await page.getByLabelText('Text Content:').fill('{{9sku}}');
 
-		await expect
-			.element(page.getByText(/Placeholder “9sku” at field-1:/))
-			.toBeInTheDocument();
+		await expect.element(page.getByText(/Placeholder “9sku” at field-1:/)).toBeInTheDocument();
 	});
 
 	it('does not apply a delayed placeholder preview after barcode data changes', async () => {

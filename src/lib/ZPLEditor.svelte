@@ -222,18 +222,18 @@
 		p1: new fabric.Control({
 			x: -0.5,
 			y: -0.5,
-			actionHandler: function(eventData, transform, x, y) {
+			actionHandler: function (eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-				
+
 				const pointer = canvas.getPointer(eventData);
 				const matrix = line.calcTransformMatrix();
 				const p2Abs = fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
 					matrix
 				);
-				
+
 				let p1AbsX = pointer.x;
 				let p1AbsY = pointer.y;
 
@@ -245,15 +245,15 @@
 				if (Math.abs(p1AbsY - p2Abs.y) < 15) {
 					p1AbsY = p2Abs.y;
 				}
-				
+
 				const dx = p2Abs.x - p1AbsX;
 				const dy = p2Abs.y - p1AbsY;
 				const w = Math.sqrt(dx * dx + dy * dy) || 1;
-				const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-				
+				const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
 				const centerX = (p1AbsX + p2Abs.x) / 2;
 				const centerY = (p1AbsY + p2Abs.y) / 2;
-				
+
 				line.set({
 					x1: -w / 2,
 					y1: 0,
@@ -268,14 +268,14 @@
 					scaleY: 1
 				} as any);
 				line.dirty = true;
-				
+
 				line.setCoords();
 				updateZPL();
 				canvas.requestRenderAll();
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function(ctx, left, top, styleOverride, fabricObject) {
+			render: function (ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -286,7 +286,7 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function(dim, finalMatrix, fabricObject) {
+			positionHandler: function (dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
@@ -297,21 +297,21 @@
 		p2: new fabric.Control({
 			x: 0.5,
 			y: 0.5,
-			actionHandler: function(eventData, transform, x, y) {
+			actionHandler: function (eventData, transform, x, y) {
 				const line = transform.target as fabric.Line;
 				const canvas = line.canvas;
 				if (!canvas) return false;
-				
+
 				const pointer = canvas.getPointer(eventData);
 				const matrix = line.calcTransformMatrix();
 				const p1Abs = fabric.util.transformPoint(
 					new fabric.Point(line.x1 || 0, line.y1 || 0),
 					matrix
 				);
-				
+
 				let p2AbsX = pointer.x;
 				let p2AbsY = pointer.y;
-				
+
 				// Snap near vertical (same X as p1)
 				if (Math.abs(p2AbsX - p1Abs.x) < 15) {
 					p2AbsX = p1Abs.x;
@@ -320,15 +320,15 @@
 				if (Math.abs(p2AbsY - p1Abs.y) < 15) {
 					p2AbsY = p1Abs.y;
 				}
-				
+
 				const dx = p2AbsX - p1Abs.x;
 				const dy = p2AbsY - p1Abs.y;
 				const w = Math.sqrt(dx * dx + dy * dy) || 1;
-				const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-				
+				const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
 				const centerX = (p1Abs.x + p2AbsX) / 2;
 				const centerY = (p1Abs.y + p2AbsY) / 2;
-				
+
 				line.set({
 					x1: -w / 2,
 					y1: 0,
@@ -343,14 +343,14 @@
 					scaleY: 1
 				} as any);
 				line.dirty = true;
-				
+
 				line.setCoords();
 				updateZPL();
 				canvas.requestRenderAll();
 				return true;
 			},
 			cursorStyle: 'pointer',
-			render: function(ctx, left, top, styleOverride, fabricObject) {
+			render: function (ctx, left, top, styleOverride, fabricObject) {
 				ctx.save();
 				ctx.beginPath();
 				ctx.arc(left, top, 6, 0, 2 * Math.PI, false);
@@ -361,7 +361,7 @@
 				ctx.stroke();
 				ctx.restore();
 			},
-			positionHandler: function(dim, finalMatrix, fabricObject) {
+			positionHandler: function (dim, finalMatrix, fabricObject) {
 				const line = fabricObject as fabric.Line;
 				return fabric.util.transformPoint(
 					new fabric.Point(line.x2 || 0, line.y2 || 0),
@@ -373,23 +373,17 @@
 
 	function centerLine(line: fabric.Line) {
 		const matrix = line.calcTransformMatrix();
-		const p1Abs = fabric.util.transformPoint(
-			new fabric.Point(line.x1 || 0, line.y1 || 0),
-			matrix
-		);
-		const p2Abs = fabric.util.transformPoint(
-			new fabric.Point(line.x2 || 0, line.y2 || 0),
-			matrix
-		);
-		
+		const p1Abs = fabric.util.transformPoint(new fabric.Point(line.x1 || 0, line.y1 || 0), matrix);
+		const p2Abs = fabric.util.transformPoint(new fabric.Point(line.x2 || 0, line.y2 || 0), matrix);
+
 		const dx = p2Abs.x - p1Abs.x;
 		const dy = p2Abs.y - p1Abs.y;
 		const w = Math.sqrt(dx * dx + dy * dy) || 1;
-		const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-		
+		const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
 		const centerX = (p1Abs.x + p2Abs.x) / 2;
 		const centerY = (p1Abs.y + p2Abs.y) / 2;
-		
+
 		line.set({
 			x1: -w / 2,
 			y1: 0,
@@ -406,7 +400,7 @@
 			angle: angle
 		} as any);
 		line.dirty = true;
-		
+
 		line.setCoords();
 	}
 
@@ -415,7 +409,7 @@
 		const dx = w;
 		const dy = h;
 		const length = Math.sqrt(dx * dx + dy * dy);
-		const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+		const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
 
 		const lineObj = new fabric.Line([-length / 2, 0, length / 2, 0], {
 			left: x + w / 2,
@@ -440,9 +434,9 @@
 
 	function updateLineSize(w: number, h: number) {
 		if (!activeObject || (activeObject as any).zplType !== 'line') return;
-		
+
 		const length = Math.sqrt(w * w + h * h) || 1;
-		const angle = Math.atan2(h, w) * 180 / Math.PI;
+		const angle = (Math.atan2(h, w) * 180) / Math.PI;
 
 		activeObject.set({
 			x1: -length / 2,
@@ -455,7 +449,7 @@
 			scaleX: 1,
 			scaleY: 1
 		} as any);
-		
+
 		activeObject.dirty = true;
 		activeObject.setCoords();
 		fabricCanvas?.renderAll();
@@ -715,10 +709,7 @@
 		updateZPL();
 		const format = barcodeObject.barcodeFormat || 'QR';
 		const newDataUrl = await renderBarcodeDataUrl(placeholderPreviewText(updated), format);
-		if (
-			barcodeObject.zplData !== updated ||
-			!barcodeCanvas.getObjects().includes(barcodeObject)
-		) {
+		if (barcodeObject.zplData !== updated || !barcodeCanvas.getObjects().includes(barcodeObject)) {
 			return;
 		}
 		barcodeObject.setSrc(newDataUrl, () => barcodeCanvas.renderAll());
@@ -791,9 +782,7 @@
 		</div>
 
 		<div class="toolbar-actions">
-			<button class="btn btn-secondary" onclick={downloadZPL}>
-				Download ZPL
-			</button>
+			<button class="btn btn-secondary" onclick={downloadZPL}> Download ZPL </button>
 			<button class="btn btn-accent" onclick={copyZPL}>
 				{copiedNotification ? '✓ Copied!' : 'Copy ZPL'}
 			</button>
@@ -952,17 +941,46 @@
 					<div class="prop-field">
 						<label><span>Alignment (ZPL FB Block):</span></label>
 						<div class="align-group">
-							<button class="align-btn" class:active={forceRender > -1 && (!activeObject.textAlign || activeObject.textAlign === 'left')} onclick={() => updateActiveProp('textAlign', 'left')} title="Left">
-								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h8v2H2V7zm0 4h12v2H2v-2z"/></svg>
+							<button
+								class="align-btn"
+								class:active={forceRender > -1 &&
+									(!activeObject.textAlign || activeObject.textAlign === 'left')}
+								onclick={() => updateActiveProp('textAlign', 'left')}
+								title="Left"
+							>
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+									><path d="M2 3h12v2H2V3zm0 4h8v2H2V7zm0 4h12v2H2v-2z" /></svg
+								>
 							</button>
-							<button class="align-btn" class:active={forceRender > -1 && activeObject.textAlign === 'center'} onclick={() => updateActiveProp('textAlign', 'center')} title="Center">
-								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm2 4h8v2H4V7zm-2 4h12v2H2v-2z"/></svg>
+							<button
+								class="align-btn"
+								class:active={forceRender > -1 && activeObject.textAlign === 'center'}
+								onclick={() => updateActiveProp('textAlign', 'center')}
+								title="Center"
+							>
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+									><path d="M2 3h12v2H2V3zm2 4h8v2H4V7zm-2 4h12v2H2v-2z" /></svg
+								>
 							</button>
-							<button class="align-btn" class:active={forceRender > -1 && activeObject.textAlign === 'right'} onclick={() => updateActiveProp('textAlign', 'right')} title="Right">
-								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm4 4h8v2H6V7zm-4 4h12v2H2v-2z"/></svg>
+							<button
+								class="align-btn"
+								class:active={forceRender > -1 && activeObject.textAlign === 'right'}
+								onclick={() => updateActiveProp('textAlign', 'right')}
+								title="Right"
+							>
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+									><path d="M2 3h12v2H2V3zm4 4h8v2H6V7zm-4 4h12v2H2v-2z" /></svg
+								>
 							</button>
-							<button class="align-btn" class:active={forceRender > -1 && activeObject.textAlign === 'justify'} onclick={() => updateActiveProp('textAlign', 'justify')} title="Justify">
-								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h12v2H2v-2z"/></svg>
+							<button
+								class="align-btn"
+								class:active={forceRender > -1 && activeObject.textAlign === 'justify'}
+								onclick={() => updateActiveProp('textAlign', 'justify')}
+								title="Justify"
+							>
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+									><path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h12v2H2v-2z" /></svg
+								>
 							</button>
 						</div>
 					</div>
@@ -1013,7 +1031,8 @@
 					<div class="template-diagnostics" aria-label="Template diagnostics">
 						{#each templateAnalysis.diagnostics as diagnostic}
 							<p>
-								Placeholder “{diagnostic.name || 'unknown'}” at {diagnostic.locationId || 'unknown location'}:
+								Placeholder “{diagnostic.name || 'unknown'}” at {diagnostic.locationId ||
+									'unknown location'}:
 								{diagnostic.message}
 							</p>
 						{/each}
