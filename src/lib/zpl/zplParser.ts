@@ -142,6 +142,7 @@ const SILENT_SKIP = new Set([
 const CANVAS_COMMANDS = new Set([
 	'PW', 'LL',             // label dimensions
 	'FO', 'FT',             // field origin / field typeset
+	'CF',                   // change font (default font for subsequent fields)
 	'A0',                   // scalable font
 	'FB',                   // field block (text alignment)
 	'BY',                   // bar width modifier
@@ -180,8 +181,11 @@ export function parseZPL(zpl: string): ParseResult {
 	// Per-field state (reset on each ^FO / ^FT)
 	let curX = 0;
 	let curY = 0;
-	let fontHeight = 36;
-	let fontWidth = 36;
+	// Global default font state (set by ^CF, persists across fields)
+	let cfHeight = 36;
+	let cfWidth = 0; // 0 means "same as height" per ZPL spec
+	let fontHeight = cfHeight;
+	let fontWidth = cfHeight;
 	let fontOrient = 'N';
 	let hasFB = false;
 	let blockWidth: number | null = null;
@@ -193,8 +197,8 @@ export function parseZPL(zpl: string): ParseResult {
 	let byWidth = 2; // bar width from ^BY, used to estimate rendered width
 
 	function resetFieldState() {
-		fontHeight = 36;
-		fontWidth = 36;
+		fontHeight = cfHeight;
+		fontWidth = cfWidth || cfHeight;
 		fontOrient = 'N';
 		hasFB = false;
 		blockWidth = null;
@@ -231,6 +235,20 @@ export function parseZPL(zpl: string): ParseResult {
 				curY = parseInt(m[2]);
 			}
 			resetFieldState();
+			continue;
+		}
+
+		// --- change font (default font for subsequent fields) ---
+		if (cmd === 'CF') {
+			// ^CF<font>,<h>,<w>  — font is 0–9 or A–Z
+			const m = token.match(/^CF[0-9A-Z],(\d+),?(\d*)/);
+			if (m) {
+				cfHeight = parseInt(m[1]);
+				cfWidth = m[2] ? parseInt(m[2]) : 0;
+				// Also update current field font so a ^CF before ^FO still applies
+				fontHeight = cfHeight;
+				fontWidth = cfWidth || cfHeight;
+			}
 			continue;
 		}
 
