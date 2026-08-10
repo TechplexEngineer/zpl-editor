@@ -14,7 +14,7 @@ export function encodeZplFieldValue(value: string, hexIndicator = '\\'): string 
 export function validateBarcodeValue(value: string, format: BarcodeFormat): string | undefined {
 	switch (format) {
 		case 'CODE39':
-			return /^[A-Z0-9 .\-$\/+%]*$/.test(value)
+			return /^[A-Z0-9 .\-$/+%]*$/.test(value)
 				? undefined
 				: 'CODE39 values may contain only uppercase letters, digits, spaces, and . - $ / + %';
 		case 'CODE128':
