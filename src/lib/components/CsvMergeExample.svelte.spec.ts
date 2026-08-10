@@ -107,4 +107,20 @@ describe('CsvMergeExample', () => {
 		await expect.element(page.getByLabelText('Printer')).not.toBeInTheDocument();
 		await expect.element(page.getByText(/combined batch/i)).not.toBeInTheDocument();
 	});
+
+	it('renders multiple barcode errors for one row while retaining another row download', async () => {
+		render(CsvMergeExample);
+
+		await enterTemplate('^XA^FO1,1^B3N,N,60,Y,N^FD{{sku}}^FS^FO1,80^BCN,60,Y,N,N^FD{{sku}}^FS^XZ');
+		await uploadCsv('SKU\nGOOD\nBAD\x01');
+		await page.getByLabelText('Source for sku').selectOptions('csv-column');
+		await page.getByLabelText('CSV column for sku').selectOptions('SKU');
+		await page.getByRole('button', { name: 'Generate labels' }).click();
+
+		await expect.element(page.getByText(/CODE39 values may contain/)).toBeInTheDocument();
+		await expect.element(page.getByText(/CODE128 values may contain/)).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: 'Download label-row-000002.zpl' }))
+			.toBeInTheDocument();
+	});
 });

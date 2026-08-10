@@ -273,7 +273,7 @@
 			{#if result.errors.length > 0}
 				<h3>Row errors</h3>
 				<ul>
-					{#each result.errors as error (`${error.rowNumber}-${error.code}-${error.placeholder ?? ''}`)}
+					{#each result.errors as error, index (`${index}-${error.rowNumber}-${error.code}-${error.placeholder ?? ''}`)}
 						<li><strong>Row {error.rowNumber}:</strong> {error.message}</li>
 					{/each}
 				</ul>
