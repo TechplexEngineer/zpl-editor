@@ -367,7 +367,7 @@
 
 	async function initializeHistoryState() {
 		suppressHistory = true;
-		addText('Sample Label', 100, 100, 48);
+		addText('Sample Label', 100, 100, 48, 280);
 		await addBarcode('https://example.com', 100, 200, 'QR');
 		suppressHistory = false;
 		pushHistorySnapshot({ reset: true });
@@ -393,7 +393,7 @@
 		pushHistorySnapshot();
 	}
 
-	function addText(content = 'Text', x = 50, y = 50, size = 36) {
+	function addText(content = 'Text', x = 50, y = 50, size = 36, width = 200) {
 		if (!fabricCanvas) return;
 		const textObj = new fabric.Textbox(content, {
 			left: x,
@@ -401,7 +401,8 @@
 			fontSize: size,
 			fontFamily: 'CG Triumvirate, Helvetica, Arial, sans-serif',
 			fill: '#000000',
-			snapAngle: 90
+			snapAngle: 90,
+			width: width,
 		});
 		(textObj as any).zplType = 'text';
 		ensureHistoryId(textObj);
