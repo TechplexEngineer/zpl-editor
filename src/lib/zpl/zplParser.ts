@@ -185,7 +185,7 @@ export function parseZPL(zpl: string): ParseResult {
 	let cfHeight = 36;
 	let cfWidth = 0; // 0 means "same as height" per ZPL spec
 	let fontHeight = cfHeight;
-	let fontWidth = cfHeight;
+	let fontWidth = cfWidth || cfHeight;
 	let fontOrient = 'N';
 	let hasFB = false;
 	let blockWidth: number | null = null;
@@ -240,9 +240,9 @@ export function parseZPL(zpl: string): ParseResult {
 
 		// --- change font (default font for subsequent fields) ---
 		if (cmd === 'CF') {
-			// ^CF<font>,<h>,<w>  — font is 0–9 or A–Z
-			const m = token.match(/^CF[0-9A-Z],(\d+),?(\d*)/);
-			if (m) {
+			// ^CF<font>,<h>,<w>  — font is 0–9 or A–Z; height and width are optional
+			const m = token.match(/^CF[0-9A-Z]?,?(\d*),?(\d*)/);
+			if (m && m[1]) {
 				cfHeight = parseInt(m[1]);
 				cfWidth = m[2] ? parseInt(m[2]) : 0;
 				// Also update current field font so a ^CF before ^FO still applies
