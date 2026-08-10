@@ -88,6 +88,16 @@ describe('CsvMergeExample', () => {
 		await expect.element(page.getByRole('button', { name: 'Generate labels' })).toBeEnabled();
 	});
 
+	it('does not treat inherited Object.prototype as an explicit __proto__ mapping', async () => {
+		render(CsvMergeExample);
+
+		await enterTemplate('^XA^FO1,1^A0N,20,20^FD{{__proto__}}^FS^XZ');
+		await uploadCsv('__proto__\nVALUE');
+
+		await expect.element(page.getByText('Choose a source for “__proto__”.')).toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Generate labels' })).toBeDisabled();
+	});
+
 	it('maps a __proto__ placeholder as an own property through the browser workflow', async () => {
 		render(CsvMergeExample);
 

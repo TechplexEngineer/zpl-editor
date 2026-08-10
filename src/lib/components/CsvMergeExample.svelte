@@ -28,7 +28,9 @@
 	let completeMapping = $derived.by(() => {
 		const mapping = Object.create(null) as Partial<PlaceholderMapping>;
 		for (const placeholder of analysis.placeholders) {
-			const provider = mappingDraft[placeholder];
+			const provider = Object.hasOwn(mappingDraft, placeholder)
+				? mappingDraft[placeholder]
+				: undefined;
 			if (!provider || (provider.kind === 'csv-column' && provider.column === '')) continue;
 			mapping[placeholder] = provider;
 		}
