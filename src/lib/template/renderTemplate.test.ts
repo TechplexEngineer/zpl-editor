@@ -160,10 +160,14 @@ describe('renderCsvRows', () => {
 		expect(result.generated[0]?.zpl).toBe('^XA^XZ\r\n');
 	});
 
-	it('rejects any placeholder introduced by a provider value', () => {
+	it.each([
+		['a different valid placeholder', '{{other}}'],
+		['malformed placeholder delimiters', '{{'],
+		['an invalid placeholder name', '{{not valid}}']
+	])('rejects %s introduced by a provider value', (_case, value) => {
 		const template = '^XA^FO1,1^A0N,20,20^FD{{sku}}^FS^XZ';
 		const result = renderCsvRows(template, parseCsv('SKU\nA1'), {
-			sku: { kind: 'literal', value: '{{other}}' }
+			sku: { kind: 'literal', value }
 		});
 
 		expect(result.generated).toEqual([]);

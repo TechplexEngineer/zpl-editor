@@ -212,7 +212,10 @@ function isValidRenderedLabel(zpl: string): boolean {
 	if (!withoutTrailingNewlines.startsWith('^XA') || !withoutTrailingNewlines.endsWith('^XZ')) {
 		return false;
 	}
-	if (analyzeTemplate(zpl).occurrences.length > 0) return false;
+	const renderedAnalysis = analyzeTemplate(zpl);
+	if (renderedAnalysis.occurrences.length > 0 || renderedAnalysis.diagnostics.length > 0) {
+		return false;
+	}
 
 	let fieldIsOpen = false;
 	for (const match of zpl.matchAll(/\^(FD|FS)/g)) {
