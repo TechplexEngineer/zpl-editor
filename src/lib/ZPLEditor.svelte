@@ -1022,7 +1022,7 @@
 			<label class="control-group">
 				<span>DPI:</span>
 				<select value={dpi} onchange={(e) => applyLabelSettings(width, height, parseInt(e.currentTarget.value))}>
-					<option value={200}>200 DPI</option>
+					<option value={203}>203 DPI</option>
 					<option value={300}>300 DPI (Default)</option>
 					<option value={600}>600 DPI</option>
 				</select>
