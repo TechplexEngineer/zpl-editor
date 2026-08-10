@@ -992,7 +992,7 @@
 	<!-- TOP TOOLBAR -->
 	<header class="toolbar">
 		<div class="toolbar-section">
-			<span class="logo">🏷️ ZPL Editor</span>
+			<span class="logo">ZPL Editor</span>
 		</div>
 
 		<div class="toolbar-controls">

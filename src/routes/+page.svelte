@@ -36,8 +36,8 @@
 <div class="demo-wrapper">
 	<nav class="demo-nav">
 		<div class="brand">
-			<span class="logo-icon">🖨️</span>
-			<h1>Svelte ZPL Editor Demo</h1>
+			<span class="logo-icon"></span>
+			<h1></h1>
 		</div>
 
 		<div class="view-tabs">
